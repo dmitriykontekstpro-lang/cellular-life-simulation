@@ -45,9 +45,12 @@ export class SettingsPanel {
 
         // Валидация
         if (!this.validateSettings(settings)) {
+            console.warn('⚠️ Попытка применить некорректные настройки');
             alert('Проверьте правильность введенных значений!');
             return;
         }
+
+        console.log('%c ⚙️ Применены новые настройки: ', 'color: #ff00ff; font-weight: bold;', settings);
 
         this.engine.applySettings(settings);
 

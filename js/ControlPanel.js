@@ -15,6 +15,7 @@ export class ControlPanel {
 
         // Start button
         startBtn.addEventListener('click', () => {
+            console.log('%c ▶️ Запуск симуляции ', 'background: #28a745; color: white; border-radius: 3px;');
             this.engine.start();
             startBtn.disabled = true;
             pauseBtn.disabled = false;
@@ -22,6 +23,7 @@ export class ControlPanel {
 
         // Pause button
         pauseBtn.addEventListener('click', () => {
+            console.log('%c ⏸️ Пауза ', 'background: #ffc107; color: black; border-radius: 3px;');
             this.engine.pause();
             startBtn.disabled = false;
             pauseBtn.disabled = true;
@@ -29,6 +31,7 @@ export class ControlPanel {
 
         // Reset button
         resetBtn.addEventListener('click', () => {
+            console.log('%c 🔄 Сброс симуляции ', 'background: #dc3545; color: white; border-radius: 3px;');
             this.engine.reset();
             startBtn.disabled = false;
             pauseBtn.disabled = true;
@@ -39,6 +42,8 @@ export class ControlPanel {
             const speed = parseInt(e.target.value);
             this.engine.setSpeed(speed);
             speedValue.textContent = `${speed}x`;
+            // Логируем не каждый сдвиг, а можно и каждый, если хочется видеть поток
+            console.log(`%c ⏩ Скорость изменена: ${speed}x`, 'color: #17a2b8;');
         });
 
         // Listen for stats updates

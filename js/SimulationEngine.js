@@ -94,6 +94,10 @@ export class SimulationEngine {
             this.lastFrameTime = currentTime;
             this.renderer.render();
             this.updateStats();
+
+            if (this.tickCount % 1000 === 0) {
+                console.log(`%c ⏱️ Tick: ${this.tickCount} | Biomass: ${document.getElementById('plantCount')?.textContent || '?'}`, 'color: #888888; font-size: 10px;');
+            }
         }
 
         requestAnimationFrame(() => this.gameLoop());
