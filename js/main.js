@@ -2,18 +2,39 @@
 import { SimulationEngine } from './SimulationEngine.js';
 import { SettingsPanel } from './SettingsPanel.js';
 import { ControlPanel } from './ControlPanel.js';
-import { logVersion, APP_VERSION } from './Version.js';
+import { logVersion, APP_VERSION, BUILD_DATE } from './Version.js';
+
+function getHashColor(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    // Генерируем красивый цвет (исключаем слишком темные)
+    const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+    const color = '#' + '00000'.substring(0, 6 - c.length) + c;
+    return color;
+}
 
 // Инициализация приложения
 document.addEventListener('DOMContentLoaded', () => {
-    // Выводим версию
+    // Выводим версию в консоль
     logVersion();
 
-    // Добавляем версию в угол экрана
-    const vDiv = document.createElement('div');
-    vDiv.style.cssText = 'position:fixed; bottom:5px; right:5px; color:rgba(255,255,255,0.2); font-size:10px; font-family:monospace; pointer-events:none; z-index:1000;';
-    vDiv.textContent = `v${APP_VERSION}`;
-    document.body.appendChild(vDiv);
+    // Обновляем UI версии
+    const versionText = document.getElementById('version-text');
+    const versionLed = document.getElementById('version-led');
+
+    if (versionText && versionLed) {
+        versionText.textContent = `v${APP_VERSION} (${BUILD_DATE})`;
+
+        // Генерируем уникальный цвет для этой сборки
+        const versionString = APP_VERSION + BUILD_DATE;
+        const ledColor = getHashColor(versionString);
+
+        versionLed.style.backgroundColor = ledColor;
+        versionLed.style.boxShadow = `0 0 8px ${ledColor}, 0 0 16px ${ledColor}`;
+        versionLed.title = `Signature: ${ledColor}`;
+    }
 
     console.log('🌱 Инициализация симуляции клеточной жизни...');
 

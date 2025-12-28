@@ -19,18 +19,18 @@
     --plant-color: #00ff88;
     --seed-color: #88ffaa;
     --water-color: #00aaff;
-    
+
     /* Spacing */
     --spacing-xs: 0.5rem;
     --spacing-sm: 1rem;
     --spacing-md: 1.5rem;
     --spacing-lg: 2rem;
-    
+
     /* Border Radius */
     --radius-sm: 0.5rem;
     --radius-md: 1rem;
     --radius-lg: 1.5rem;
-    
+
     /* Shadows */
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -81,8 +81,15 @@ body {
 }
 
 @keyframes glow {
-    0%, 100% { filter: drop-shadow(0 0 10px rgba(0, 217, 255, 0.5)); }
-    50% { filter: drop-shadow(0 0 20px rgba(123, 47, 247, 0.7)); }
+
+    0%,
+    100% {
+        filter: drop-shadow(0 0 10px rgba(0, 217, 255, 0.5));
+    }
+
+    50% {
+        filter: drop-shadow(0 0 20px rgba(123, 47, 247, 0.7));
+    }
 }
 
 /* Main Layout */
@@ -309,7 +316,7 @@ body {
     .main-layout {
         grid-template-columns: 1fr;
     }
-    
+
     .settings-panel {
         max-width: 100%;
     }
@@ -319,16 +326,16 @@ body {
     .header h1 {
         font-size: 2rem;
     }
-    
+
     .stats-panel {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .control-panel {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .speed-control {
         margin-left: 0;
         justify-content: space-between;
@@ -341,6 +348,7 @@ body {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -350,4 +358,35 @@ body {
 .settings-panel,
 .simulation-area {
     animation: fadeIn 0.6s ease-out;
+}
+
+/* Version Badge */
+.app-version-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    font-family: monospace;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 10;
+}
+
+.version-led {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #666;
+    box-shadow: 0 0 5px #666;
+    transition: all 0.5s ease;
+}
+
+.header {
+    position: relative;
 }
