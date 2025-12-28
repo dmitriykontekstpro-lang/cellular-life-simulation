@@ -22,15 +22,20 @@ export class WaterSystem {
     }
 
     generateRiver() {
+        console.log('%c 🌊 Generating River Tree... ', 'color: #00aaff; font-weight: bold;');
         this.reset();
 
         const gridSize = this.grid.size;
+
+        // Начало реки: середина левого края
         const startY = Math.floor(gridSize / 2);
 
-        // Начало реки с толщиной 8
+        // Запускаем рекурсивную генерацию
+        // x, y, angle (в радианах), width, depth
         this.drawBranch(0, startY, 0, 8);
 
         this.updateWaterFlow();
+        console.log(`%c ✅ River Generation Complete. Sources: ${this.riverCells.length} `, 'color: #00aaff;');
     }
 
     drawBranch(x, y, angle, width) {

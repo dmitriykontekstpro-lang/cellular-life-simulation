@@ -166,6 +166,7 @@ export class PlantManager {
                 plantId: plant.id
             });
 
+            console.log(`%c 🌱 New plant sprouted at [${pos.x}, ${pos.y}]`, 'color: #00ff88; font-weight: bold;');
             return plant;
         }
 
