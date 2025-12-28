@@ -25,65 +25,95 @@ export class WaterSystem {
         this.reset();
 
         const gridSize = this.grid.size;
-
-        // Начало реки: середина левого края
         const startY = Math.floor(gridSize / 2);
 
-        // Запускаем рекурсивную генерацию
-        // x, y, angle (в радианах), width, depth
-        this.drawBranch(0, startY, 0, 8, 0);
+        // Начало реки с толщиной 8
+        this.drawBranch(0, startY, 0, 8);
 
         this.updateWaterFlow();
     }
 
-    drawBranch(x, y, angle, width, depth) {
+    drawBranch(x, y, angle, width) {
         const gridSize = this.grid.size;
 
-        // Если вышли за пределы или слишком глубоко - стоп
-        if (x < 0 || x >= gridSize || y < 0 || y >= gridSize || depth > 20 || width < 1) {
-            return;
-        }
+        // Прекращаем, если стали слишком тонкими (< 1 уже не рисуем)
+        if (width < 1) return;
 
-        // Длина сегмента: чем тоньше, тем короче
-        // Толстые ветки длиннее
-        const length = Math.floor(10 + width * 2 + Math.random() * 10);
+        // Длина сегмента зависит от толщины (чем тоньше, тем короче, чтобы быстрее ветвиться в конце)
+        // Но делаем минимальную длину, чтобы ветки были видимыми
+        const segmentLength = Math.max(15, Math.floor(width * 5 + Math.random() * 10));
 
         let currentX = x;
         let currentY = y;
 
-        for (let i = 0; i < length; i++) {
-            // Рисуем кистью текущей толщины
+        // Проверка перед началом отрисовки: не уперлись ли мы сразу в воду?
+        // (Для корня x=0 это не проверяем)
+        if (x > 5 && this.checkCollision(x + Math.cos(angle) * 5, y + Math.sin(angle) * 5, width)) {
+            return;
+        }
+
+        for (let i = 0; i < segmentLength; i++) {
+            // Проверка коллизии вперед на несколько шагов
+            // Если впереди вода (чужая), останавливаемся
+            if (i % 5 === 0 && this.checkCollision(currentX + Math.cos(angle) * width, currentY + Math.sin(angle) * width, width)) {
+                return;
+            }
+
             this.paintBrush(currentX, currentY, width);
 
-            // Двигаемся вперед
             currentX += Math.cos(angle);
             currentY += Math.sin(angle);
 
-            // Небольшое виляние (шум)
-            angle += (Math.random() - 0.5) * 0.1;
+            // Очень слабое виляние, чтобы река шла более прямо и не врезалась сама в себя
+            angle += (Math.random() - 0.5) * 0.05;
 
-            // Тянем к правому краю, если угол слишком крутой
-            if (angle > 1.5) angle -= 0.1;
-            if (angle < -1.5) angle += 0.1;
+            if (currentX >= gridSize || currentY < 0 || currentY >= gridSize) return;
         }
 
-        // Ветвление
-        // Если ширина позволяет, разделяемся
-        if (width > 1.5) {
-            const newWidth = width * 0.7; // Каждая следующая ветка тоньше
-            const spread = 0.5 + Math.random() * 0.5; // Угол расхождения 30-60 градусов
+        // ВЕТВЛЕНИЕ
+        // Строго уменьшаем толщину
+        // Если толщина была 8, станет 6 -> 4 -> 3 -> 2 -> 1
+        let newWidth = width - 1;
+        if (width > 6) newWidth = width - 2;
+        if (width <= 2) newWidth = 1;
 
-            // Ветка вверх
-            this.drawBranch(currentX, currentY, angle - spread, newWidth, depth + 1);
-
-            // Ветка вниз
-            this.drawBranch(currentX, currentY, angle + spread, newWidth, depth + 1);
-
-            // Иногда продолжаем центр
-            if (Math.random() > 0.4 && width > 4) {
-                this.drawBranch(currentX, currentY, angle, newWidth, depth + 1);
+        // Если мы уже 1, то просто заканчиваемся или делаем еще один короткий штрих
+        if (width === 1) {
+            // Шанс продолжить тонкий ручеек, но не ветвиться
+            if (Math.random() < 0.5) {
+                this.drawBranch(currentX, currentY, angle, 0.5); // 0.5 округлится до 0 и выйдет
             }
+            return;
         }
+
+        // Создаем "Веер" веток
+        // Гарантируем, что ветки расходятся в стороны
+        const spreadAngle = 0.4 + Math.random() * 0.2; // ~20-35 градусов
+
+        // Ветка 1 (Вверх)
+        this.drawBranch(currentX, currentY, angle - spreadAngle, newWidth);
+
+        // Ветка 2 (Вниз)
+        this.drawBranch(currentX, currentY, angle + spreadAngle, newWidth);
+
+        // Ветка 3 (Центр) - только для толстых рек
+        if (width > 4) {
+            this.drawBranch(currentX, currentY, angle, newWidth);
+        }
+    }
+
+    // Проверка, есть ли вода в радиусе (исключая текущую позицию, это сложно без ID ветки)
+    // Упрощенно: проверяем, свободно ли место
+    checkCollision(tx, ty, radius) {
+        if (tx < 0 || tx >= this.grid.size || ty < 0 || ty >= this.grid.size) return true;
+
+        // Проверяем точку назначения. Если там уже есть вода (и это не мы только что нарисовали)
+        // Поскольку мы рисуем последовательно, "старая" вода - это чужая вода или наш хвост (если петля)
+        const cell = this.grid.getCell(Math.floor(tx), Math.floor(ty));
+        if (cell && cell.hasWater && !cell.isFreshlyPainted) {
+            return true;
+        }
+        return false;
     }
 
     paintBrush(x, y, radius) {
@@ -94,7 +124,14 @@ export class WaterSystem {
         for (let dy = -r; dy <= r; dy++) {
             for (let dx = -r; dx <= r; dx++) {
                 if (dx * dx + dy * dy <= r * r) {
-                    this.addWaterCell(intX + dx, intY + dy, true);
+                    const nx = intX + dx;
+                    const ny = intY + dy;
+                    this.addWaterCell(nx, ny, true);
+
+                    // Помечаем клетку как "свеженарисованную" для этого цикла генерации,
+                    // чтобы детектор коллизий не срабатывал на только что нарисованный сегмент
+                    const cell = this.grid.getCell(nx, ny);
+                    if (cell) cell.isFreshlyPainted = true;
                 }
             }
         }
