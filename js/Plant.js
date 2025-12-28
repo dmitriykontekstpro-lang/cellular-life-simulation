@@ -72,10 +72,10 @@ export class Plant {
                 plantId: this.id
             });
 
-            // Если ветка стала слишком длинной - она перестает расти, давая шанс другим
-            if (branch.cells.length > 25) {
-                branch.active = false;
-            }
+            // Ограничение длины ветки снято по запросу пользователя
+            // if (branch.cells.length > 25) {
+            //    branch.active = false;
+            // }
 
             return true;
         } else {
