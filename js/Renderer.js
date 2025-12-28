@@ -67,6 +67,9 @@ export class Renderer {
         });
 
         this.canvas.addEventListener('mouseup', () => {
+            if (isDragging) {
+                console.log('%c 🖱️ Pan End ', 'color: #aaa; font-size:10px;');
+            }
             isDragging = false;
         });
 
@@ -80,6 +83,9 @@ export class Renderer {
             const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
             this.zoom *= zoomFactor;
             this.zoom = Math.max(0.5, Math.min(5, this.zoom));
+
+            console.log(`%c 🔍 Zoom: ${this.zoom.toFixed(2)}x`, 'color: #00d9ff; font-size:10px;');
+
             this.updateCellSize();
             this.render();
         });
