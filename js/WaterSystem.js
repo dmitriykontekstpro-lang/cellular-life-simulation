@@ -195,4 +195,14 @@ export class WaterSystem {
         // Можно добавить динамику, но пока статика
         // this.updateWaterFlow(); // Вызываем из Engine редко
     }
+
+    getWaterCellCount() {
+        return this.riverCells.length;
+    }
+
+    consumeWater(x, y) {
+        // Пока что река бесконечная, просто возвращаем true
+        // В будущем можно уменьшать уровень воды в этой клетке
+        return true;
+    }
 }
