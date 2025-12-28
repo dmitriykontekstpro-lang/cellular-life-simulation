@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0] - 2025-12-28 - Visual Overhaul
+
+### 🌊 Fractal River System
+- **New Algorithm**: Implemented recursive "Brush" painting algorithm.
+- **Continuous Flow**: Guaranteed no breaks in the river.
+- **Organic Shape**: Thick trunk (8px) branching into thinner streams naturally.
+
+### 🌿 Advanced Plant Life
+- **Biomass Tracking**: Stats now show total cell count (Biomass) instead of just plant count.
+- **Deep Roots**: Water search radius increased 1x -> 12x. Plants can drink from afar.
+- **Durability**: Plants no longer shrink immediately when hungry; they go dormant.
+- **Bushy Growth**: New branching logic for more organic, non-linear shapes.
+
 ## [1.1.0] - 2025-12-28 - Performance Optimizations
 
 ### 🚀 Performance Improvements (10-15x faster)
