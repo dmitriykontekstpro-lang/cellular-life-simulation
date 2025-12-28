@@ -73,7 +73,10 @@ export class ControlPanel {
             stats = this.engine.getStats();
         }
 
-        document.getElementById('plantCount').textContent = stats.plantCount;
+        // Вместо кол-ва растений показываем биомассу
+        const displayValue = stats.totalBiomass !== undefined ? stats.totalBiomass : stats.plantCount;
+
+        document.getElementById('plantCount').textContent = displayValue.toLocaleString();
         document.getElementById('seedCount').textContent = stats.seedCount;
         document.getElementById('waterCells').textContent = stats.waterCells;
         document.getElementById('tickCount').textContent = stats.tickCount.toLocaleString();

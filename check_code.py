@@ -44,10 +44,9 @@ def quick_code_check():
     all_checks_passed &= check_file_content(
         os.path.join(base_path, "js", "WaterSystem.js"),
         {
-            "Древовидная генерация реки": "НОВАЯ ГЕНЕРАЦИЯ: Древовидная река с толстым стволом",
-            "Метод древовидного ветвления": "createTreeBranch(",
-            "Толстый ствол": "trunkThickness = 8",
-            "Радиус воды оптимизирован (6)": "propagateWaterOptimized(source.x, source.y, 6)",
+            "Рекурсивная кисть (drawBranch)": "drawBranch(x, y, angle, width, depth)",
+            "Рисование кистью (paintBrush)": "paintBrush(x, y, radius)",
+            "Оптимизированный радиус (6)": "propagateWaterOptimized(source.x, source.y, 6)",
         }
     )
     

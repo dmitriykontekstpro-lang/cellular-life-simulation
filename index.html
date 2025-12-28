@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="app-container">
         <header class="header">
@@ -21,7 +23,7 @@
             <!-- Settings Panel -->
             <aside class="settings-panel">
                 <h2>⚙️ Настройки</h2>
-                
+
                 <div class="settings-section">
                     <h3>Размер поля</h3>
                     <div class="input-group">
@@ -33,7 +35,7 @@
 
                 <div class="settings-section">
                     <h3>🌿 Растения</h3>
-                    
+
                     <div class="input-group">
                         <label for="plantStartCount">Стартовое количество</label>
                         <input type="number" id="plantStartCount" min="1" max="100" value="5">
@@ -64,7 +66,7 @@
                     <button id="startBtn" class="btn btn-success">▶️ Старт</button>
                     <button id="pauseBtn" class="btn btn-warning" disabled>⏸️ Пауза</button>
                     <button id="resetBtn" class="btn btn-danger">🔄 Сброс</button>
-                    
+
                     <div class="speed-control">
                         <label for="speedSlider">Скорость:</label>
                         <input type="range" id="speedSlider" min="1" max="10" value="5" step="1">
@@ -74,7 +76,7 @@
 
                 <div class="stats-panel">
                     <div class="stat-item">
-                        <span class="stat-label">🌱 Растения:</span>
+                        <span class="stat-label">🌱 Биомасса:</span>
                         <span id="plantCount" class="stat-value">0</span>
                     </div>
                     <div class="stat-item">
@@ -110,4 +112,5 @@
     <script type="module" src="js/ControlPanel.js"></script>
     <script type="module" src="js/main.js"></script>
 </body>
+
 </html>

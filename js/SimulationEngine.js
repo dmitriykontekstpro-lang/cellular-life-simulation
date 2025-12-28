@@ -132,10 +132,17 @@ export class SimulationEngine {
     }
 
     updateStats() {
+        // Считаем общую биомассу
+        let totalBiomass = 0;
+        for (const plant of this.plantManager.plants) {
+            totalBiomass += plant.cells.length;
+        }
+
         const stats = {
             plantCount: this.plantManager.getPlantCount(),
+            totalBiomass: totalBiomass,
             seedCount: this.plantManager.getSeedCount(),
-            waterCells: this.waterSystem.getWaterCellCount(),
+            waterCells: this.waterSystem.riverCells.length,
             tickCount: this.tickCount
         };
 

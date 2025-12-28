@@ -28,23 +28,34 @@ export class Plant {
 
         this.age++;
 
-        // Получаем активную ветку
-        const branch = this.branches[this.currentBranch];
-        if (!branch || !branch.active) {
-            return false;
+        // Шанс на новую ветку если растение уже подросло
+        if (this.size > 5 && Math.random() < 0.15) {
+            this.startNewBranch(grid);
         }
 
-        // Последняя клетка активной ветки
+        // Выбираем случайную активную ветку
+        const activeBranches = this.branches.filter(b => b.active);
+        if (activeBranches.length === 0) return false; // Нет активных веток -> не растем
+
+        const branch = activeBranches[Math.floor(Math.random() * activeBranches.length)];
         const lastCell = branch.cells[branch.cells.length - 1];
+
         const cell = grid.getCell(lastCell.x, lastCell.y);
 
         // Проверка условий роста: энергия и вода
         const hasEnergy = cell && cell.energy > 0;
-        const waterNearby = grid.findNearestWater(lastCell.x, lastCell.y, 1);
 
+        // УВЕЛИЧЕН РАДИУС поиска воды до 12 клеток (корни длинные)
+        const waterNearby = grid.findNearestWater(lastCell.x, lastCell.y, 12);
+
+        // Если совсем нет ресурсов - просто ждем, НЕ УМИРАЕМ
+        if (!hasEnergy && !waterNearby) {
+            return false;
+        }
+
+        // Если не хватает только одного ресурса - тоже ждем
         if (!hasEnergy || !waterNearby) {
-            // Условия не выполнены - растение уменьшается
-            return this.shrink(grid);
+            return false;
         }
 
         // Условия выполнены - растем
@@ -61,81 +72,68 @@ export class Plant {
                 plantId: this.id
             });
 
-            // Случайное ветвление
-            if (branch.cells.length > 5 && Math.random() < 0.15) {
-                this.tryBranch(grid);
+            // Если ветка стала слишком длинной - она перестает расти, давая шанс другим
+            if (branch.cells.length > 25) {
+                branch.active = false;
             }
 
             return true;
+        } else {
+            // Если расти некуда - ветка "засыхает" и больше не активна
+            branch.active = false;
         }
 
         return false;
     }
 
-    // Поиск позиции для роста (преимущественно вверх)
-    findGrowthPosition(fromCell, grid) {
-        const { x, y } = fromCell;
+    startNewBranch(grid) {
+        if (this.branches.length > 15) return; // Ограничение кол-ва веток
 
-        // Направления роста с весами (вверх имеет больший приоритет)
+        // Ищем клетку для ветвления (желательно посередине)
+        const startIdx = Math.floor(Math.random() * this.cells.length);
+        const startCell = this.cells[startIdx];
+
+        // Создаем новую ветку
+        this.branches.push({
+            cells: [startCell], // Начинаем от существующей клетки
+            active: true
+        });
+    }
+
+    findGrowthPosition(fromCell, grid) {
+        // Направления роста (более хаотично для кустистости)
         const directions = [
-            { dx: 0, dy: -1, weight: 5 },  // вверх (приоритет)
-            { dx: -1, dy: -1, weight: 2 }, // вверх-лево
-            { dx: 1, dy: -1, weight: 2 },  // вверх-право
-            { dx: -1, dy: 0, weight: 1 },  // лево
-            { dx: 1, dy: 0, weight: 1 }    // право
+            { dx: 0, dy: -1 }, // вверх
+            { dx: -1, dy: -1 }, // влево-вверх
+            { dx: 1, dy: -1 },  // вправо-вверх
+            { dx: -1, dy: 0 },  // влево
+            { dx: 1, dy: 0 },   // вправо
+            { dx: -1, dy: 1 },  // влево-вниз (немного)
+            { dx: 1, dy: 1 }    // вправо-вниз (немного)
         ];
 
-        // Взвешенный случайный выбор
-        const candidates = [];
-        for (const dir of directions) {
-            const nx = x + dir.dx;
-            const ny = y + dir.dy;
+        // Перемешиваем направления
+        directions.sort(() => Math.random() - 0.5);
 
-            // Проверяем, что клетка пуста и соблюдается минимальное расстояние
-            if (grid.isCellEmpty(nx, ny) && grid.isAreaClear(nx, ny, 5, this.id)) {
-                for (let i = 0; i < dir.weight; i++) {
-                    candidates.push({ x: nx, y: ny });
+        for (const dir of directions) {
+            const nx = fromCell.x + dir.dx;
+            const ny = fromCell.y + dir.dy;
+
+            // Проверяем границы и пустоту
+            if (nx >= 0 && nx < grid.size && ny >= 0 && ny < grid.size) {
+                if (grid.isCellEmpty(nx, ny)) {
+                    // Проверяем соседей чтобы не было слишком плотно (опционально)
+                    // Но для кустистости можно разрешить плотность
+                    return { x: nx, y: ny };
                 }
             }
         }
 
-        if (candidates.length === 0) {
-            return null;
-        }
-
-        return candidates[Math.floor(Math.random() * candidates.length)];
+        return null; // Некуда расти
     }
 
-    // Попытка создать ветку
-    tryBranch(grid) {
-        // Максимум веток
-        if (this.branches.length >= 10) {
-            return false;
-        }
-
-        // Находим случайную клетку текущей ветки для ветвления
-        const parentBranch = this.branches[this.currentBranch];
-        if (parentBranch.cells.length < 3) {
-            return false;
-        }
-
-        const randomIndex = Math.floor(Math.random() * parentBranch.cells.length);
-        const branchPoint = parentBranch.cells[randomIndex];
-
-        // Создаем новую ветку
-        const newBranch = {
-            cells: [branchPoint],
-            active: true,
-            maxLength: Math.min(20, this.maxSize - this.size)
-        };
-
-        this.branches.push(newBranch);
-
-        // Переключаемся на новую ветку
-        this.currentBranch = this.branches.length - 1;
-
-        return true;
-    }
+    // Старый метод tryBranch больше не нужен, но оставим заглушку если он где-то вызывается
+    tryBranch(grid) { return false; }
 
     // Уменьшение растения
     shrink(grid) {

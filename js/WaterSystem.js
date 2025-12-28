@@ -1,127 +1,113 @@
-// WaterSystem.js - Manages water river and flow mechanics
 export class WaterSystem {
     constructor(grid) {
         this.grid = grid;
         this.riverCells = [];
+        this.waterFlowCache = new Map();
+    }
+
+    reset() {
+        this.riverCells = [];
+        this.waterFlowCache.clear();
+        // Очищаем воду с карты
+        for (let y = 0; y < this.grid.size; y++) {
+            for (let x = 0; x < this.grid.size; x++) {
+                const cell = this.grid.getCell(x, y);
+                if (cell && cell.type === 'water') {
+                    this.grid.setCell(x, y, { type: 'empty', hasWater: false, isWaterSource: false });
+                } else if (cell) {
+                    cell.hasWater = false;
+                }
+            }
+        }
     }
 
     generateRiver() {
-        this.riverCells = [];
+        this.reset();
+
         const gridSize = this.grid.size;
 
-        // НОВАЯ ГЕНЕРАЦИЯ: Древовидная река с толстым стволом
-        // Начинаем с толстого ствола слева
-        const trunkStartY = Math.floor(gridSize * 0.4);
-        const trunkThickness = 8; // Толщина ствола
+        // Начало реки: середина левого края
+        const startY = Math.floor(gridSize / 2);
 
-        // Создаем толстый ствол слева
-        for (let dy = -trunkThickness / 2; dy < trunkThickness / 2; dy++) {
-            const y = trunkStartY + dy;
-            if (y >= 0 && y < gridSize) {
-                this.addWaterCell(0, y, true);
-            }
-        }
+        // Запускаем рекурсивную генерацию
+        // x, y, angle (в радианах), width, depth
+        this.drawBranch(0, startY, 0, 8, 0);
 
-        // Рекурсивное ветвление от ствола
-        this.createTreeBranch(0, trunkStartY, trunkThickness, 1, 0); // начинаем с направления вправо
-
-        // Инициализация потока воды
         this.updateWaterFlow();
     }
 
-    createTreeBranch(x, y, thickness, direction, depth) {
+    drawBranch(x, y, angle, width, depth) {
         const gridSize = this.grid.size;
-        const maxDepth = 25; // Максимальная длина ветки
 
-        // Прекращаем если достигли края или максимальной глубины
-        if (x >= gridSize - 1 || depth >= maxDepth || thickness < 1) {
+        // Если вышли за пределы или слишком глубоко - стоп
+        if (x < 0 || x >= gridSize || y < 0 || y >= gridSize || depth > 20 || width < 1) {
             return;
         }
 
-        // Уменьшаем толщину с каждым уровнем ветвления
-        const newThickness = Math.max(1, thickness - 0.5);
+        // Длина сегмента: чем тоньше, тем короче
+        // Толстые ветки длиннее
+        const length = Math.floor(10 + width * 2 + Math.random() * 10);
 
-        // Движемся вправо
-        const nextX = x + 1;
-        const nextY = y + Math.floor((Math.random() - 0.5) * 2); // Небольшое отклонение по вертикали
+        let currentX = x;
+        let currentY = y;
 
-        // Рисуем текущую секцию с учетом толщины
-        const currentThickness = Math.ceil(thickness);
-        for (let dy = -currentThickness / 2; dy < currentThickness / 2; dy++) {
-            const cellY = nextY + dy;
-            if (cellY >= 0 && cellY < gridSize && nextX >= 0 && nextX < gridSize) {
-                this.addWaterCell(nextX, cellY, true);
-            }
+        for (let i = 0; i < length; i++) {
+            // Рисуем кистью текущей толщины
+            this.paintBrush(currentX, currentY, width);
+
+            // Двигаемся вперед
+            currentX += Math.cos(angle);
+            currentY += Math.sin(angle);
+
+            // Небольшое виляние (шум)
+            angle += (Math.random() - 0.5) * 0.1;
+
+            // Тянем к правому краю, если угол слишком крутой
+            if (angle > 1.5) angle -= 0.1;
+            if (angle < -1.5) angle += 0.1;
         }
 
-        // Вероятность ветвления зависит от толщины
-        const branchProbability = thickness > 2 ? 0.15 : 0.3;
+        // Ветвление
+        // Если ширина позволяет, разделяемся
+        if (width > 1.5) {
+            const newWidth = width * 0.7; // Каждая следующая ветка тоньше
+            const spread = 0.5 + Math.random() * 0.5; // Угол расхождения 30-60 градусов
 
-        if (Math.random() < branchProbability && thickness > 1.5) {
-            // Создаем две ветки
-            const branch1Angle = Math.random() * 2 - 1; // от -1 до 1
-            const branch2Angle = Math.random() * 2 - 1;
+            // Ветка вверх
+            this.drawBranch(currentX, currentY, angle - spread, newWidth, depth + 1);
 
-            this.createTreeBranch(
-                nextX,
-                nextY + Math.floor(branch1Angle * 3),
-                newThickness,
-                branch1Angle,
-                0
-            );
+            // Ветка вниз
+            this.drawBranch(currentX, currentY, angle + spread, newWidth, depth + 1);
 
-            this.createTreeBranch(
-                nextX,
-                nextY + Math.floor(branch2Angle * 3),
-                newThickness,
-                branch2Angle,
-                0
-            );
-        } else {
-            // Продолжаем текущую ветку
-            this.createTreeBranch(nextX, nextY, newThickness, direction, depth + 1);
+            // Иногда продолжаем центр
+            if (Math.random() > 0.4 && width > 4) {
+                this.drawBranch(currentX, currentY, angle, newWidth, depth + 1);
+            }
         }
     }
 
-    createBranch(startX, startY, length) {
-        // DEPRECATED: Используется createTreeBranch
-        // Оставлено для обратной совместимости
-        let x = startX;
-        let y = startY;
+    paintBrush(x, y, radius) {
+        const r = Math.ceil(radius / 2);
+        const intX = Math.floor(x);
+        const intY = Math.floor(y);
 
-        for (let i = 0; i < length; i++) {
-            const directions = [
-                { dx: 1, dy: 0 },
-                { dx: -1, dy: 0 },
-                { dx: 0, dy: 1 },
-                { dx: 0, dy: -1 },
-                { dx: 1, dy: 1 },
-                { dx: 1, dy: -1 }
-            ];
-
-            const validDirs = directions.filter(dir => {
-                const nx = x + dir.dx;
-                const ny = y + dir.dy;
-                return nx >= 0 && nx < this.grid.size &&
-                    ny >= 0 && ny < this.grid.size &&
-                    this.grid.isCellEmpty(nx, ny);
-            });
-
-            if (validDirs.length === 0) break;
-
-            const dir = validDirs[Math.floor(Math.random() * validDirs.length)];
-            x += dir.dx;
-            y += dir.dy;
-
-            this.addWaterCell(x, y, true);
+        for (let dy = -r; dy <= r; dy++) {
+            for (let dx = -r; dx <= r; dx++) {
+                if (dx * dx + dy * dy <= r * r) {
+                    this.addWaterCell(intX + dx, intY + dy, true);
+                }
+            }
         }
     }
 
     addWaterCell(x, y, isSource) {
+        if (x < 0 || x >= this.grid.size || y < 0 || y >= this.grid.size) return;
+
         const cell = this.grid.getCell(x, y);
         if (!cell) return;
 
-        // Если клетка уже занята растением, не добавляем воду
+        // Не перезаписываем другие типы клеток (хотя река должна быть мощнее растений)
+        // Но при генерации растений еще нет
         if (cell.type === 'plant' || cell.type === 'seed') {
             return;
         }
@@ -138,86 +124,34 @@ export class WaterSystem {
     }
 
     updateWaterFlow() {
-        // Распространяем воду от источников (реки) к соседним клеткам
-        // ОПТИМИЗАЦИЯ: Уменьшен радиус до 6 для производительности
+        // ОПТИМИЗАЦИЯ: Обновляем только кешированные данные или пересчитываем
+        // В данном случае просто распространяем воду от русла
         for (const source of this.riverCells) {
             this.propagateWaterOptimized(source.x, source.y, 6);
         }
     }
 
-    propagateWater(x, y, radius) {
-        // ОПТИМИЗАЦИЯ: Упрощенный алгоритм для производительности
-        // Используем квадратный радиус вместо BFS
+    propagateWaterOptimized(x, y, radius) {
+        // Простой квадратный радиус для производительности
         for (let dy = -radius; dy <= radius; dy++) {
             for (let dx = -radius; dx <= radius; dx++) {
-                // Manhattan distance для более реалистичного распространения
-                const distance = Math.abs(dx) + Math.abs(dy);
-                if (distance > radius) continue;
+                if (Math.abs(dx) + Math.abs(dy) > radius) continue;
 
-                const nx = x + dx;
-                const ny = y + dy;
-
-                this.addWaterFlow(nx, ny);
+                this.addWaterFlow(x + dx, y + dy);
             }
         }
-    }
-
-    propagateWaterOptimized(x, y, radius) {
-        // Еще более оптимизированная версия
-        this.propagateWater(x, y, radius);
     }
 
     addWaterFlow(x, y) {
+        if (x < 0 || x >= this.grid.size || y < 0 || y >= this.grid.size) return;
         const cell = this.grid.getCell(x, y);
-        if (!cell) return false;
-
-        // Не перезаписываем другие типы клеток
-        if (cell.type !== 'empty' && cell.type !== 'water') {
-            return false;
+        if (cell && cell.type === 'empty') {
+            cell.hasWater = true;
         }
-
-        cell.hasWater = true;
-        return true;
-    }
-
-    consumeWater(x, y, grid) {
-        const cell = grid.getCell(x, y);
-        if (!cell || !cell.hasWater) return;
-
-        // Если это источник воды, он не истощается
-        if (cell.isWaterSource) return;
-
-        // Временно убираем воду
-        cell.hasWater = false;
-
-        // Вода восполняется из реки на следующем обновлении
     }
 
     update() {
-        // Обновляем поток воды каждый тик
-        this.updateWaterFlow();
-    }
-
-    getWaterCellCount() {
-        return this.grid.getCellTypeCount('water') +
-            this.grid.cells.filter(c => c.hasWater && c.type !== 'water').length;
-    }
-
-    reset() {
-        // Удаляем всю воду
-        for (let y = 0; y < this.grid.size; y++) {
-            for (let x = 0; x < this.grid.size; x++) {
-                const cell = this.grid.getCell(x, y);
-                if (cell && (cell.type === 'water' || cell.hasWater)) {
-                    this.grid.setCell(x, y, {
-                        type: 'empty',
-                        hasWater: false,
-                        isWaterSource: false
-                    });
-                }
-            }
-        }
-
-        this.riverCells = [];
+        // Можно добавить динамику, но пока статика
+        // this.updateWaterFlow(); // Вызываем из Engine редко
     }
 }
