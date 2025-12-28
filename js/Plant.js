@@ -180,22 +180,46 @@ export class Plant {
     }
 
     // Генерация семян при достижении максимального размера
-    generateSeeds(grid) {
+    generateSeeds(grid, count = 2) {
         if (this.size < this.maxSize) {
             return [];
         }
 
         const seeds = [];
+        let attempts = 0;
+        const maxAttempts = count * 5; // Лимит попыток
 
-        // Создаем семена на концах веток
+        // Собираем все кончики веток как кандидатов
+        const candidates = [];
         for (const branch of this.branches) {
             if (branch.cells.length > 0) {
-                const tipCell = branch.cells[branch.cells.length - 1];
+                candidates.push(branch.cells[branch.cells.length - 1]);
+            }
+        }
 
-                // Семя только если клетка близка к верхней части
-                if (tipCell.y < grid.size * 0.3) {
-                    seeds.push({ x: tipCell.x, y: tipCell.y });
-                    grid.setCell(tipCell.x, tipCell.y, {
+        // Если кандидатов мало, добавим просто случайные клетки растения
+        if (candidates.length < count) {
+            candidates.push(...this.cells);
+        }
+
+        while (seeds.length < count && attempts < maxAttempts) {
+            attempts++;
+            // Берем случайного кандидата
+            const sourceCell = candidates[Math.floor(Math.random() * candidates.length)];
+
+            // Пытаемся уронить семя рядом
+            const dx = Math.floor(Math.random() * 5) - 2; // -2..2
+            const dy = Math.floor(Math.random() * 5) - 2;
+
+            const sx = sourceCell.x + dx;
+            const sy = sourceCell.y + dy;
+
+            if (sx >= 0 && sx < grid.size && sy >= 0 && sy < grid.size) {
+                // Если место свободно (или даже занято нами же, но для семени можно перезаписать, если умираем)
+                // Но лучше искать пустое
+                if (grid.isCellEmpty(sx, sy)) {
+                    seeds.push({ x: sx, y: sy });
+                    grid.setCell(sx, sy, {
                         type: 'seed',
                         plantId: null
                     });

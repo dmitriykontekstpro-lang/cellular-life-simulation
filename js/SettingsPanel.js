@@ -59,11 +59,26 @@ export class SettingsPanel {
     }
 
     validateSettings(settings) {
-        if (settings.gridSize < 100 || settings.gridSize > 1000) return false;
-        if (settings.plantStartCount < 1 || settings.plantStartCount > 100) return false;
-        if (settings.plantReproductionSpeed < 1 || settings.plantReproductionSpeed > 100) return false;
-        if (settings.plantOffspringCount < 1 || settings.plantOffspringCount > 10) return false;
-        if (settings.plantMaxSize < 10 || settings.plantMaxSize > 200) return false;
+        if (settings.gridSize < 50 || settings.gridSize > 2000) {
+            console.warn('Invalid gridSize', settings.gridSize);
+            return false;
+        }
+        if (settings.plantStartCount < 1 || settings.plantStartCount > 500) {
+            console.warn('Invalid plantStartCount', settings.plantStartCount);
+            return false;
+        }
+        if (settings.plantReproductionSpeed < 1 || settings.plantReproductionSpeed > 500) {
+            console.warn('Invalid plantReproductionSpeed', settings.plantReproductionSpeed);
+            return false;
+        }
+        if (settings.plantOffspringCount < 1 || settings.plantOffspringCount > 50) {
+            console.warn('Invalid plantOffspringCount', settings.plantOffspringCount);
+            return false;
+        }
+        if (settings.plantMaxSize < 5 || settings.plantMaxSize > 1000) {
+            console.warn('Invalid plantMaxSize', settings.plantMaxSize);
+            return false;
+        }
 
         return true;
     }

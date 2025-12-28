@@ -115,7 +115,7 @@ export class SimulationEngine {
         }
 
         // Обновляем растения
-        this.plantManager.update(this.energySystem, this.waterSystem);
+        this.plantManager.update(this.energySystem, this.waterSystem, this.tickCount);
     }
 
     setSpeed(speed) {

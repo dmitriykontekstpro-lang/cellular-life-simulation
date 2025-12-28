@@ -85,7 +85,10 @@ export class PlantManager {
         return null;
     }
 
-    update(energySystem, waterSystem) {
+    update(energySystem, waterSystem, tickCount) {
+        // Растения растут только раз в 60 тиков (1 раз в секунду при скорости 1x)
+        const canGrow = tickCount % 60 === 0;
+
         // Обновляем все растения
         for (let i = this.plants.length - 1; i >= 0; i--) {
             const plant = this.plants[i];
@@ -98,7 +101,9 @@ export class PlantManager {
             // Проверка на достижение максимального размера ПЕРЕД ростом
             if (plant.size >= plant.maxSize) {
                 console.log(`%c 🍂 Plant ${plant.id} died (Max Size). Generated seeds...`, 'color: #ffaa00;');
-                const seeds = plant.generateSeeds(this.grid);
+                // Передаем количество семян из конфига
+                const seeds = plant.generateSeeds(this.grid, this.config.plantOffspringCount);
+
                 this.seeds.push(...seeds);
                 console.log(`%c ✨ Generated ${seeds.length} seeds from plant ${plant.id}`, 'color: #ffff00;');
                 plant.die(this.grid);
@@ -106,8 +111,10 @@ export class PlantManager {
                 continue;
             }
 
-            // Попытка роста (только если не достиг максимума)
-            plant.tryGrow(this.grid, energySystem, waterSystem);
+            // Попытка роста (только если настал момент)
+            if (canGrow) {
+                plant.tryGrow(this.grid, energySystem, waterSystem);
+            }
         }
 
         // Обработка семян (прорастание)
