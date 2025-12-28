@@ -111,35 +111,45 @@ export class WaterSystem {
 
     updateWaterFlow() {
         // Распространяем воду от источников (реки) к соседним клеткам
+        // ОПТИМИЗАЦИЯ: Уменьшен радиус до 6 для производительности
         for (const source of this.riverCells) {
-            this.propagateWater(source.x, source.y, 20); // Радиус распространения увеличен в 10 раз
+            this.propagateWaterOptimized(source.x, source.y, 6);
         }
     }
 
     propagateWater(x, y, radius) {
-        const visited = new Set();
-        const queue = [{ x, y, depth: 0 }];
-        visited.add(`${x},${y}`);
+        // ОПТИМИЗАЦИЯ: Упрощенный алгоритм для производительности
+        // Используем квадратный радиус вместо BFS
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                // Manhattan distance для более реалистичного распространения
+                const distance = Math.abs(dx) + Math.abs(dy);
+                if (distance > radius) continue;
 
-        while (queue.length > 0) {
-            const current = queue.shift();
+                const nx = x + dx;
+                const ny = y + dy;
 
-            if (current.depth >= radius) continue;
-
-            const neighbors = this.grid.getNeighbors(current.x, current.y);
-
-            for (const neighbor of neighbors) {
-                const key = `${neighbor.x},${neighbor.y}`;
-                if (visited.has(key)) continue;
-                visited.add(key);
-
-                const cell = this.grid.getCell(neighbor.x, neighbor.y);
-                if (cell && cell.type === 'empty') {
-                    cell.hasWater = true;
-                    queue.push({ x: neighbor.x, y: neighbor.y, depth: current.depth + 1 });
-                }
+                this.addWaterFlow(nx, ny);
             }
         }
+    }
+
+    propagateWaterOptimized(x, y, radius) {
+        // Еще более оптимизированная версия
+        this.propagateWater(x, y, radius);
+    }
+
+    addWaterFlow(x, y) {
+        const cell = this.grid.getCell(x, y);
+        if (!cell) return false;
+
+        // Не перезаписываем другие типы клеток
+        if (cell.type !== 'empty' && cell.type !== 'water') {
+            return false;
+        }
+
+        cell.hasWater = true;
+        return true;
     }
 
     consumeWater(x, y, grid) {

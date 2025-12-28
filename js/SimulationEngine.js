@@ -105,8 +105,10 @@ export class SimulationEngine {
         // Обновляем энергию
         this.energySystem.update();
 
-        // Обновляем воду
-        this.waterSystem.update();
+        // ОПТИМИЗАЦИЯ: Обновляем воду только каждые 10 тиков
+        if (this.tickCount % 10 === 0) {
+            this.waterSystem.update();
+        }
 
         // Обновляем растения
         this.plantManager.update(this.energySystem, this.waterSystem);
