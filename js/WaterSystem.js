@@ -9,55 +9,83 @@ export class WaterSystem {
         this.riverCells = [];
         const gridSize = this.grid.size;
 
-        // Начинаем с левого края на случайной высоте
-        let x = 0;
-        let y = Math.floor(gridSize * 0.3 + Math.random() * gridSize * 0.4);
+        // НОВАЯ ГЕНЕРАЦИЯ: Древовидная река с толстым стволом
+        // Начинаем с толстого ствола слева
+        const trunkStartY = Math.floor(gridSize * 0.4);
+        const trunkThickness = 8; // Толщина ствола
 
-        this.addWaterCell(x, y, true);
-
-        // Идем к правому краю с ветвлением
-        while (x < gridSize - 1) {
-            // Основное направление - вправо
-            const directions = [
-                { dx: 1, dy: 0, weight: 5 },   // прямо вправо (приоритет)
-                { dx: 1, dy: -1, weight: 2 },  // вправо-вверх
-                { dx: 1, dy: 1, weight: 2 },   // вправо-вниз
-                { dx: 0, dy: -1, weight: 1 },  // вверх
-                { dx: 0, dy: 1, weight: 1 }    // вниз
-            ];
-
-            // Взвешенный случайный выбор направления
-            const candidates = [];
-            for (const dir of directions) {
-                const nx = x + dir.dx;
-                const ny = y + dir.dy;
-
-                if (nx >= 0 && nx < gridSize && ny >= 0 && ny < gridSize) {
-                    for (let i = 0; i < dir.weight; i++) {
-                        candidates.push({ x: nx, y: ny });
-                    }
-                }
-            }
-
-            if (candidates.length === 0) break;
-
-            const next = candidates[Math.floor(Math.random() * candidates.length)];
-            x = next.x;
-            y = next.y;
-
-            this.addWaterCell(x, y, true);
-
-            // Случайное ветвление (увеличена частота)
-            if (Math.random() < 0.4) {
-                this.createBranch(x, y, Math.floor(Math.random() * 10) + 5);
+        // Создаем толстый ствол слева
+        for (let dy = -trunkThickness / 2; dy < trunkThickness / 2; dy++) {
+            const y = trunkStartY + dy;
+            if (y >= 0 && y < gridSize) {
+                this.addWaterCell(0, y, true);
             }
         }
+
+        // Рекурсивное ветвление от ствола
+        this.createTreeBranch(0, trunkStartY, trunkThickness, 1, 0); // начинаем с направления вправо
 
         // Инициализация потока воды
         this.updateWaterFlow();
     }
 
+    createTreeBranch(x, y, thickness, direction, depth) {
+        const gridSize = this.grid.size;
+        const maxDepth = 25; // Максимальная длина ветки
+
+        // Прекращаем если достигли края или максимальной глубины
+        if (x >= gridSize - 1 || depth >= maxDepth || thickness < 1) {
+            return;
+        }
+
+        // Уменьшаем толщину с каждым уровнем ветвления
+        const newThickness = Math.max(1, thickness - 0.5);
+
+        // Движемся вправо
+        const nextX = x + 1;
+        const nextY = y + Math.floor((Math.random() - 0.5) * 2); // Небольшое отклонение по вертикали
+
+        // Рисуем текущую секцию с учетом толщины
+        const currentThickness = Math.ceil(thickness);
+        for (let dy = -currentThickness / 2; dy < currentThickness / 2; dy++) {
+            const cellY = nextY + dy;
+            if (cellY >= 0 && cellY < gridSize && nextX >= 0 && nextX < gridSize) {
+                this.addWaterCell(nextX, cellY, true);
+            }
+        }
+
+        // Вероятность ветвления зависит от толщины
+        const branchProbability = thickness > 2 ? 0.15 : 0.3;
+
+        if (Math.random() < branchProbability && thickness > 1.5) {
+            // Создаем две ветки
+            const branch1Angle = Math.random() * 2 - 1; // от -1 до 1
+            const branch2Angle = Math.random() * 2 - 1;
+
+            this.createTreeBranch(
+                nextX,
+                nextY + Math.floor(branch1Angle * 3),
+                newThickness,
+                branch1Angle,
+                0
+            );
+
+            this.createTreeBranch(
+                nextX,
+                nextY + Math.floor(branch2Angle * 3),
+                newThickness,
+                branch2Angle,
+                0
+            );
+        } else {
+            // Продолжаем текущую ветку
+            this.createTreeBranch(nextX, nextY, newThickness, direction, depth + 1);
+        }
+    }
+
     createBranch(startX, startY, length) {
+        // DEPRECATED: Используется createTreeBranch
+        // Оставлено для обратной совместимости
         let x = startX;
         let y = startY;
 
