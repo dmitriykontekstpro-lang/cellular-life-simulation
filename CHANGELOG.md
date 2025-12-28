@@ -5,7 +5,9 @@
 ### 🌊 Fractal River System
 - **New Algorithm**: Implemented recursive "Brush" painting algorithm.
 - **Continuous Flow**: Guaranteed no breaks in the river.
-- **Organic Shape**: Thick trunk (8px) branching into thinner streams naturally.
+- **Organic Shape**: Long thin arteries (start width 3px).
+- **Meandering**: Added sine-wave noise for realistic curving paths.
+- **Long Segments**: Branches flow for 30-100 cells before splitting.
 
 ### 🌿 Advanced Plant Life
 - **Biomass Tracking**: Stats now show total cell count (Biomass) instead of just plant count.
