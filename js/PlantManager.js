@@ -97,10 +97,10 @@ export class PlantManager {
 
             // Проверка на достижение максимального размера ПЕРЕД ростом
             if (plant.size >= plant.maxSize) {
-                console.log(`Plant ${plant.id} reached max size ${plant.maxSize}, generating seeds...`);
+                console.log(`%c 🍂 Plant ${plant.id} died (Max Size). Generated seeds...`, 'color: #ffaa00;');
                 const seeds = plant.generateSeeds(this.grid);
                 this.seeds.push(...seeds);
-                console.log(`Generated ${seeds.length} seeds from plant ${plant.id}`);
+                console.log(`%c ✨ Generated ${seeds.length} seeds from plant ${plant.id}`, 'color: #ffff00;');
                 plant.die(this.grid);
                 this.plants.splice(i, 1);
                 continue;
