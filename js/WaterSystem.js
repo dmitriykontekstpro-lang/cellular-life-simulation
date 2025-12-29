@@ -24,22 +24,27 @@ export class WaterSystem {
     }
 
     generateRiver() {
-        console.log('%c 🌊 Generating Complex Water System... ', 'color: #00aaff; font-weight: bold;');
+        console.log('%c 🌊 Generating Controlled Water System... ', 'color: #00aaff; font-weight: bold;');
         this.reset();
 
         const gridSize = this.grid.size;
         const startY = Math.floor(gridSize * 0.5);
 
-        // 1. Сначала генерируем реку, чтобы знать её координаты
         this.riverTips = [];
-        this.drawBranch(0, startY, 0, 5, 0);
+        this.splitsCount = 0; // Считаем количество разветвлений
 
-        // 2. Генерируем озера (до 5 штук, подальше от реки)
+        // 1. Сначала генерируем реку
+        // Start width 6 to allow enough splitting potential for 7-11 tips
+        this.drawBranch(0, startY, 0, 6, 0);
+
+        // 2. Генерируем озера (с учетом оставшегося лимита воды)
         this.generateLakes();
 
         this.updateWaterFlow();
-        console.log(`%c ✅ Water System Complete. River Ends: ${this.riverTips.length}. Water Cells: ${this.riverCells.length} `, 'color: #00aaff;');
+        console.log(`%c ✅ Water System Complete. River Ends: ${this.riverTips.length}. Splits: ${this.splitsCount}. Water Cells: ${this.riverCells.length} `, 'color: #00aaff;');
     }
+
+    // ... generateLakes остается без изменений, логика addWaterCell ограничит их размер ...
 
     generateLakes() {
         const gridSize = this.grid.size;
@@ -112,25 +117,27 @@ export class WaterSystem {
     drawBranch(x, y, angle, width, depth) {
         const gridSize = this.grid.size;
 
-        // Лимит глубины
-        if (depth > 80) return;
+        if (depth > 120) return; // Защита от бесконечности
 
-        // Проверка границ: если вышли, регистрируем конец и выходим
-        if (x < -5 || x >= gridSize + 5 || y < -5 || y >= gridSize + 5) {
+        // Проверка границ
+        if (x < -10 || x >= gridSize + 10 || y < -10 || y >= gridSize + 10) {
             this.registerTip(x, y);
             return;
         }
 
-        // Если стали слишком тонкими (<1), стоп
-        if (width < 0.8) {
+        // Если уперлись в лимит воды (проверяем косвенно: если новые клетки не добавляются, значит лимит)
+        if (this.riverCells.length >= (gridSize * gridSize * 0.2)) {
             this.registerTip(x, y);
             return;
         }
 
-        // ДЛИНА ВЕТКИ: 
-        // Делаем ветки достаточно длинными, но вариативными
-        const segmentLength = Math.floor(20 + Math.random() * 40);
+        // Если слишком тонкая
+        if (width < 0.6) {
+            this.registerTip(x, y);
+            return;
+        }
 
+        const segmentLength = Math.floor(15 + Math.random() * 30);
         let currentX = x;
         let currentY = y;
         let currentAngle = angle;
@@ -138,48 +145,61 @@ export class WaterSystem {
         for (let i = 0; i < segmentLength; i++) {
             this.paintBrush(currentX, currentY, width);
 
-            // Синусоидальное движение для органичности
             currentAngle += Math.sin(i * 0.15 + depth) * 0.08 + (Math.random() - 0.5) * 0.05;
-
-            // Корректировка, чтобы не загибалась совсем назад (держим генеральное направление вправо, но слабо)
-            if (currentAngle > 2.0) currentAngle -= 0.1;
-            if (currentAngle < -2.0) currentAngle += 0.1;
+            // Мягкое ограничение угла
+            if (currentAngle > 1.8) currentAngle -= 0.1;
+            if (currentAngle < -1.8) currentAngle += 0.1;
 
             currentX += Math.cos(currentAngle);
             currentY += Math.sin(currentAngle);
 
-            if (currentX >= gridSize || currentY < 0 || currentY >= gridSize) break; // Выход за границы
+            if (currentX >= gridSize || currentY < 0 || currentY >= gridSize) break;
 
-            // Проверяем коллизии НЕ с собой (через 10 шагов)
-            // Радиус проверки зависит от ширины
+            // Коллизии
             if (i > 8 && this.checkCollision(currentX + Math.cos(currentAngle) * 5, currentY + Math.sin(currentAngle) * 5)) {
-                this.registerTip(currentX, currentY); // Уперлись - значит конец ветки
+                this.registerTip(currentX, currentY);
                 return;
             }
         }
 
-        // ВЕТВЛЕНИЕ
-        // Логика: чтобы получить 20+ концов, нам нужно активно ветвиться, пока ширина позволяет
-        if (width > 1.0) {
-            // Медленное уменьшение толщины: 5 -> 4.2 -> 3.5 ... -> 1
-            const newWidth = width * 0.85;
+        // --- ВЕТВЛЕНИЕ (Controlled Splits for 7-11 tips) ---
+        // 1 ветка изначально + X сплитов = 1 + X концов.
+        // Цель: 7-11 концов, значит нужно 6-10 сплитов global.
 
-            // Широкий веер для дистанции между концами
-            // Spread 0.4..0.8 радиан (~25-45 градусов)
-            const spread = 0.4 + Math.random() * 0.4;
+        if (currentX < gridSize - 10 && width > 1.0) {
+            let wantSplit = false;
 
-            // Почти всегда ветвимся на 2
-            this.drawBranch(currentX, currentY, currentAngle - spread, newWidth, depth + 1);
-            this.drawBranch(currentX, currentY, currentAngle + spread, newWidth, depth + 1);
+            // Если сплитов еще мало (меньше 6) - очень хотим ветвиться
+            if (this.splitsCount < 6) {
+                // Если ширина позволяет, почти форсируем, иначе надеемся на удачу
+                wantSplit = (width > 1.5) ? (Math.random() < 0.85) : (Math.random() < 0.5);
+            }
+            // Если уже в диапазоне (6-10), то умеренно
+            else if (this.splitsCount < 10) {
+                wantSplit = (Math.random() < 0.3); // 30% шанс
+            }
+            // Если перебор - не ветвимся
+            else {
+                wantSplit = false;
+            }
 
-            // Иногда добавляем третью ветку по центру, если река широкая
-            if (width > 3 && Math.random() > 0.4) {
-                this.drawBranch(currentX, currentY, currentAngle, newWidth, depth + 1);
+            if (wantSplit) {
+                this.splitsCount++;
+                const newWidth = Math.max(0.5, width * 0.8);
+                const spread = 0.4 + Math.random() * 0.4; // 25-45 градусов
+
+                this.drawBranch(currentX, currentY, currentAngle - spread, newWidth, depth + 1);
+                this.drawBranch(currentX, currentY, currentAngle + spread, newWidth, depth + 1);
+            } else {
+                // Просто продолжаем одну ветку, немного сужая
+                this.drawBranch(currentX, currentY, currentAngle, Math.max(0.5, width - 0.2), depth + 1);
             }
         } else {
             this.registerTip(currentX, currentY);
         }
     }
+
+    // ...
 
     registerTip(x, y) {
         // Округляем координаты
@@ -220,21 +240,30 @@ export class WaterSystem {
     addWaterCell(x, y, isSource) {
         if (x < 0 || x >= this.grid.size || y < 0 || y >= this.grid.size) return;
 
-        const cell = this.grid.getCell(x, y);
-        if (!cell) return;
-
-        if (cell.type === 'plant' || cell.type === 'seed') {
-            return;
+        // --- LIMIT CHECK ---
+        const totalGridCells = this.grid.size * this.grid.size;
+        // Лимит 20%
+        if (this.riverCells.length >= totalGridCells * 0.20) {
+            return; // Больше воды не даем
         }
 
-        this.grid.setCell(x, y, {
-            type: 'water',
-            hasWater: true,
-            isWaterSource: isSource
-        });
+        const cell = this.grid.getCell(x, y);
+        if (!cell) return;
+        if (cell.type === 'plant' || cell.type === 'seed') return; // Не заливаем растения
 
-        if (isSource) {
-            this.riverCells.push({ x, y });
+        // Если там уже вода - ничего не меняется для счетчика (мы считаем уникальные клетки в массиве? 
+        // Нет, addWaterCell может вызываться для уже водной, но мы не должны дублировать в riverCells)
+
+        if (!cell.hasWater) {
+            // Новая клетка воды
+            this.grid.setCell(x, y, {
+                type: 'water',
+                hasWater: true,
+                isWaterSource: isSource
+            });
+            if (isSource) {
+                this.riverCells.push({ x, y });
+            }
         }
     }
 
