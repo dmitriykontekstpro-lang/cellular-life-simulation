@@ -87,39 +87,68 @@ export class SimulationEngine {
         const deltaTime = currentTime - this.lastUpdateTime;
 
         // Симуляция: обновляем логику с учетом скорости
-        // Target 60 updates per second, then scale by speed
         const updatesNeeded = Math.floor(deltaTime * this.speed / (1000 / 60));
 
         for (let i = 0; i < updatesNeeded; i++) {
             this.tickCount++;
-
-            // Обновляем энергию
             this.energySystem.update();
 
-            // ОПТИМИЗАЦИЯ: Обновляем воду только каждые 10 тиков
             if (this.tickCount % 10 === 0) {
                 this.waterSystem.update();
             }
 
-            // Обновляем растения
             this.plantManager.update(this.energySystem, this.waterSystem, this.tickCount);
         }
 
         if (updatesNeeded > 0) {
             this.lastUpdateTime = currentTime;
             this.updateStats();
-            this.needsRender = true; // Mark that a render is needed
+            this.needsRender = true;
+
             if (this.tickCount % 1000 === 0) {
                 console.log(`%c ⏱️ Tick: ${this.tickCount} | Biomass: ${document.getElementById('plantCount')?.textContent || '?'}`, 'color: #888888; font-size: 10px;');
             }
         }
 
-        if (this.tickCount % 10 === 0) {
-            this.waterSystem.update();
+        this.animationId = requestAnimationFrame(() => this.update());
+    }
+
+    // Отдельный цикл рендеринга (60 FPS)
+    renderLoop() {
+        if (!this.isRunning && !this.needsRender) {
+            return;
         }
 
-        // Обновляем растения
-        this.plantManager.update(this.energySystem, this.waterSystem, this.tickCount);
+        if (this.needsRender) {
+            this.renderer.render();
+            this.needsRender = false;
+        }
+
+        this.renderAnimationId = requestAnimationFrame(() => this.renderLoop());
+    }
+
+    start() {
+        if (this.isRunning) return;
+
+        console.log('%c 🚀 Starting simulation... ', 'color: #00ff88; font-weight: bold;');
+        this.isRunning = true;
+        this.lastUpdateTime = performance.now();
+        this.needsRender = true;
+
+        this.update();
+        this.renderLoop();
+    }
+
+    pause() {
+        console.log('%c ⏸️ Pausing simulation ', 'color: #ffaa00; font-weight: bold;');
+        this.isRunning = false;
+
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+        if (this.renderAnimationId) {
+            cancelAnimationFrame(this.renderAnimationId);
+        }
     }
 
     setSpeed(speed) {
