@@ -70,6 +70,7 @@
                     <button id="startBtn" class="btn btn-success">▶️ Старт</button>
                     <button id="pauseBtn" class="btn btn-warning" disabled>⏸️ Пауза</button>
                     <button id="resetBtn" class="btn btn-danger">🔄 Сброс</button>
+                    <button id="fullscreenBtn" class="btn btn-primary" style="margin-left: auto;">⛶ Full Screen</button>
 
                     <div class="speed-control">
                         <label for="speedSlider">Скорость:</label>
@@ -97,8 +98,14 @@
                     </div>
                 </div>
 
-                <div class="canvas-container">
+                <div class="canvas-container" id="simulationContainer">
                     <canvas id="simulationCanvas"></canvas>
+
+                    <!-- Magnifier View (Picture-in-Picture) -->
+                    <div id="magnifier-container" class="magnifier-view" style="display: none;">
+                        <span class="magnifier-label">🔍 Zoom 50x50</span>
+                        <canvas id="magnifierCanvas"></canvas>
+                    </div>
                 </div>
             </main>
         </div>

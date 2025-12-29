@@ -46,6 +46,14 @@ export class ControlPanel {
             console.log(`%c ⏩ Скорость изменена: ${speed}x`, 'color: #17a2b8;');
         });
 
+        // Full Screen button
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', () => {
+                this.engine.renderer.toggleFullScreen();
+            });
+        }
+
         // Listen for stats updates
         document.addEventListener('statsUpdate', (e) => {
             this.updateStatsDisplay(e.detail);

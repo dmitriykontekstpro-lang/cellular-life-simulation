@@ -206,4 +206,101 @@ export class Renderer {
         this.showEnergy = !this.showEnergy;
         this.render();
     }
+
+    // --- Full Screen Logic ---
+    toggleFullScreen() {
+        this.isFullScreen = !this.isFullScreen;
+        const container = document.getElementById('simulationContainer');
+        const magnifier = document.getElementById('magnifier-container');
+
+        if (this.isFullScreen) {
+            container.classList.add('fullscreen-mode');
+            magnifier.style.display = 'flex'; // Показываем лупу
+            this.showMagnifier = true;
+
+            // Инициализация канваса лупы, если еще нет
+            if (!this.magnifierCtx) {
+                const cvs = document.getElementById('magnifierCanvas');
+                if (cvs) {
+                    cvs.width = 250;
+                    cvs.height = 250;
+                    this.magnifierCtx = cvs.getContext('2d');
+                    this.magnifierCtx.imageSmoothingEnabled = false; // Пиксельность
+                }
+            }
+        } else {
+            container.classList.remove('fullscreen-mode');
+            magnifier.style.display = 'none'; // Скрываем
+            this.showMagnifier = false;
+        }
+
+        this.resizeCanvas(); // Пересчитать размер под новое состояние
+        this.render();
+    }
+
+    renderMagnifier() {
+        if (!this.magnifierCtx || !this.showMagnifier) return;
+
+        const ctx = this.magnifierCtx;
+        const size = 50; // Размер окна (клеток)
+        const halfSize = Math.floor(size / 2);
+
+        // Центр - курсор мыши, или центр экрана если мышь не там
+        let cx = this.hoverX !== undefined ? this.hoverX : -1;
+        let cy = this.hoverY !== undefined ? this.hoverY : -1;
+
+        if (cx < 0 || cy < 0) {
+            // Если мышь не на канвасе, берем центр экрана
+            const centerGridX = Math.floor((-this.offsetX + this.canvas.width / 2) / this.cellSize);
+            const centerGridY = Math.floor((-this.offsetY + this.canvas.height / 2) / this.cellSize);
+            cx = centerGridX;
+            cy = centerGridY;
+        }
+
+        const startX = cx - halfSize;
+        const startY = cy - halfSize;
+
+        // Рисуем на канвасе 250x250
+        // size=50 => cellSize = 5px   (250/50 = 5)
+        const magCellSize = 250 / size; // 5px
+
+        // Очистка
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, 250, 250);
+
+        for (let dy = 0; dy < size; dy++) {
+            for (let dx = 0; dx < size; dx++) {
+                const gx = startX + dx;
+                const gy = startY + dy;
+
+                if (gx < 0 || gx >= this.grid.size || gy < 0 || gy >= this.grid.size) continue;
+
+                const cell = this.grid.getCell(gx, gy);
+                if (cell && cell.type !== 'empty') {
+                    // Используем тот же метод цвета, что и в основном рендере
+                    if (cell.type === 'plant') {
+                        if (this.plantManager) {
+                            const plant = this.plantManager.plants.find(p => p.id === cell.plantId);
+                            ctx.fillStyle = (plant && plant.hasEnergySupply) ? '#006400' : '#90EE90';
+                        } else {
+                            ctx.fillStyle = this.colors.plant;
+                        }
+                    } else if (cell.type === 'seed') {
+                        ctx.fillStyle = this.colors.seed;
+                    } else if (cell.type === 'water') {
+                        ctx.fillStyle = cell.isWaterSource ? this.colors.waterSource : this.colors.water;
+                    }
+
+                    ctx.fillRect(dx * magCellSize, dy * magCellSize, magCellSize, magCellSize);
+                }
+
+                // Рисуем рамку вокруг центральной клетки (курсор)
+                if (gx === cx && gy === cy) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(dx * magCellSize, dy * magCellSize, magCellSize, magCellSize);
+                }
+            }
+        }
+    }
 }
