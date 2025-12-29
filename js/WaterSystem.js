@@ -27,15 +27,15 @@ export class WaterSystem {
         console.log('%c 🌊 Generating Complex Water System... ', 'color: #00aaff; font-weight: bold;');
         this.reset();
 
-        // 1. Генерируем озера (8-20 штук)
-        this.generateLakes();
-
-        // 2. Генерируем реку
         const gridSize = this.grid.size;
         const startY = Math.floor(gridSize * 0.5);
 
-        // Стартуем реку. 
-        this.drawBranch(0, startY, 0, 5, 0); // Начинаем чуть жирнее (5px), чтобы ветвилась активнее
+        // 1. Сначала генерируем реку, чтобы знать её координаты
+        this.riverTips = [];
+        this.drawBranch(0, startY, 0, 5, 0);
+
+        // 2. Генерируем озера (до 5 штук, подальше от реки)
+        this.generateLakes();
 
         this.updateWaterFlow();
         console.log(`%c ✅ Water System Complete. River Ends: ${this.riverTips.length}. Water Cells: ${this.riverCells.length} `, 'color: #00aaff;');
@@ -43,26 +43,70 @@ export class WaterSystem {
 
     generateLakes() {
         const gridSize = this.grid.size;
-        const numLakes = Math.floor(8 + Math.random() * 13); // 8 .. 20
+        const numLakes = Math.floor(2 + Math.random() * 4); // 2 .. 5
 
-        console.log(`%c 💧 Generating ${numLakes} Lakes...`, 'color: #0088cc;');
+        console.log(`%c 💧 Generating ${numLakes} Small Irregular Lakes...`, 'color: #0088cc;');
 
-        for (let i = 0; i < numLakes; i++) {
-            // Держимся немного от краев
-            const cx = Math.floor(10 + Math.random() * (gridSize - 20));
-            const cy = Math.floor(10 + Math.random() * (gridSize - 20));
-            const radius = Math.floor(6 + Math.random() * 25); // 6 .. 30
+        // Кэшируем координаты реки для быстрой проверки
+        // (Для оптимизации можно было бы использовать сетку, но простой перебор с шагом тоже сойдет или просто проверим 100 точек реки случайных)
+        // Но лучше и надежнее: просто проверять каждую точку кандидата
 
-            // Рисуем озеро (простой круг/кисть)
-            // Радиус * 2, так как paintBrush принимает условную "ширину кисти" (диаметр)
-            this.paintBrush(cx, cy, radius * 2);
+        let lakesCreated = 0;
+        let attempts = 0;
 
-            // Добавляем немного шума озеру (пару лишних мазков рядом)
-            if (radius > 15) {
-                this.paintBrush(cx + radius / 2, cy, radius);
-                this.paintBrush(cx - radius / 2, cy, radius);
+        while (lakesCreated < numLakes && attempts < 200) {
+            attempts++;
+
+            const startX = Math.floor(10 + Math.random() * (gridSize - 20));
+            const startY = Math.floor(10 + Math.random() * (gridSize - 20));
+
+            // Проверка дистанции до реки (минимум 50 клеток)
+            if (!this.isFarFromRiver(startX, startY, 50)) {
+                continue;
+            }
+
+            // Рисуем озеро неправильной формы (Random Walker с жирной кистью)
+            const lakeSize = 10 + Math.random() * 20; // Примерная "длина" прохода кистью
+            const brushSize = 3 + Math.random() * 3; // Толщина кисти (радиус около 3-6px, диаметр 6-12)
+
+            let lx = startX;
+            let ly = startY;
+
+            // Рисуем кляксу
+            for (let i = 0; i < lakeSize; i++) {
+                this.paintBrush(lx, ly, brushSize * 2);
+
+                // Сдвигаемся случайно
+                lx += (Math.random() - 0.5) * 4;
+                ly += (Math.random() - 0.5) * 4;
+
+                // Проверка границ
+                if (lx < 0 || lx >= gridSize || ly < 0 || ly >= gridSize) break;
+            }
+
+            lakesCreated++;
+        }
+
+        console.log(`%c 🌊 Created ${lakesCreated} lakes.`, 'color: #0088cc;');
+    }
+
+    isFarFromRiver(x, y, minDistance) {
+        // Оптимизация: проверяем не каждый пиксель реки, а с шагом
+        // А еще лучше: если река далеко, то grid.findNearestWater врнет null или что-то далекое
+        // Но у нас есть список riverCells
+
+        const minDistSq = minDistance * minDistance;
+
+        // Проверяем каждую 10-ю клетку реки для скорости (так как река непрерывна)
+        for (let i = 0; i < this.riverCells.length; i += 10) {
+            const riverCell = this.riverCells[i];
+            const dx = x - riverCell.x;
+            const dy = y - riverCell.y;
+            if (dx * dx + dy * dy < minDistSq) {
+                return false;
             }
         }
+        return true;
     }
 
     drawBranch(x, y, angle, width, depth) {
