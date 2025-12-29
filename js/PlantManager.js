@@ -115,6 +115,13 @@ export class PlantManager {
             if (canGrow) {
                 plant.tryGrow(this.grid, energySystem, waterSystem);
             }
+
+            // Попытка размножения при жизни (редко)
+            const liveSeeds = plant.tryReproduce(this.grid);
+            if (liveSeeds.length > 0) {
+                this.seeds.push(...liveSeeds);
+                console.log(`%c ✨ Generated ${liveSeeds.length} seeds from living plant ${plant.id}`, 'color: #ffff00;');
+            }
         }
 
         // Обработка семян (прорастание)

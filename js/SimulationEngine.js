@@ -29,10 +29,14 @@ export class SimulationEngine {
     initialize() {
         // Создаем основные системы
         this.grid = new Grid(this.config.gridSize);
+        this.plantManager = new PlantManager(this.grid, this.config);
+
+        // Renderer теперь требует доступа к plantManager для проверки статуса энергии
         this.renderer = new Renderer(this.canvas, this.grid);
+        this.renderer.plantManager = this.plantManager;
+
         this.energySystem = new EnergySystem(this.grid);
         this.waterSystem = new WaterSystem(this.grid);
-        this.plantManager = new PlantManager(this.grid, this.config);
 
         // ВАЖНО: Сначала генерируем реку, потом растения!
         this.waterSystem.generateRiver();

@@ -10,6 +10,7 @@ export class Plant {
         this.age = 0;
         this.branches = [{ cells: [{ x, y }], active: true }];  // Структура веток
         this.currentBranch = 0;  // Индекс активной ветки
+        this.hasEnergySupply = false;
     }
 
     get size() {
@@ -22,41 +23,39 @@ export class Plant {
 
     // Попытка вырасти
     tryGrow(grid, energySystem, waterSystem) {
-        if (!this.isAlive) {
-            return false;
-        }
+        if (!this.isAlive) return false;
 
         this.age++;
 
-        // Шанс на новую ветку если растение уже подросло
+        // Шанс на новую ветку
         if (this.size > 5 && Math.random() < 0.15) {
             this.startNewBranch(grid);
         }
 
-        // Выбираем случайную активную ветку
         const activeBranches = this.branches.filter(b => b.active);
-        if (activeBranches.length === 0) return false; // Нет активных веток -> не растем
+        if (activeBranches.length === 0) return false;
 
         const branch = activeBranches[Math.floor(Math.random() * activeBranches.length)];
         const lastCell = branch.cells[branch.cells.length - 1];
-
         const cell = grid.getCell(lastCell.x, lastCell.y);
 
-        // Проверка условий роста: энергия и вода
+        // -- ЛОГИКА ЭНЕРГИИ --
+        // Проверяем энергию в ТОЧКЕ РОСТА
         const hasEnergy = cell && cell.energy > 0;
+        this.hasEnergySupply = hasEnergy; // Обновляем статус для цвета и размножения
 
-        // УВЕЛИЧЕН РАДИУС поиска воды до 12 клеток (корни длинные)
+        // -- ПОИСК ВОДЫ --
+        // Радиус 12
         const waterNearby = grid.findNearestWater(lastCell.x, lastCell.y, 12);
 
-        // Если совсем нет ресурсов - просто ждем, НЕ УМИРАЕМ
-        if (!hasEnergy && !waterNearby) {
+        // -- ОСЛАБЛЕННОЕ УСЛОВИЕ --
+        // Главное - вода. Энергия желательна, но не критична для самого роста.
+        // Если нет воды - не растем.
+        if (!waterNearby) {
             return false;
         }
 
-        // Если не хватает только одного ресурса - тоже ждем
-        if (!hasEnergy || !waterNearby) {
-            return false;
-        }
+        // Раньше тут был return false если нет энергии. Теперь разрешаем.
 
         // Условия выполнены - растем
         const newCell = this.findGrowthPosition(lastCell, grid);
@@ -72,7 +71,7 @@ export class Plant {
                 plantId: this.id
             });
 
-            // Ограничение длины ветки снято по запросу пользователя
+            // Ограничение длины ветки снято
             // if (branch.cells.length > 25) {
             //    branch.active = false;
             // }
@@ -84,6 +83,18 @@ export class Plant {
         }
 
         return false;
+    }
+
+    // Попытка размножения ПРИ ЖИЗНИ (после 20 сек = 1200 тиков)
+    tryReproduce(grid) {
+        // Условия: возраст > 1200 (20 сек при 60 fps) И есть энергия
+        if (this.age > 1200 && this.hasEnergySupply) {
+            // Шанс размножения не каждый тик, а редко (напр. раз в 500 тиков ~ 8 сек)
+            if (Math.random() < 0.002) {
+                return this.generateSeeds(grid, 1); // Одно семечко
+            }
+        }
+        return [];
     }
 
     startNewBranch(grid) {
