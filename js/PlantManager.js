@@ -68,7 +68,9 @@ export class PlantManager {
             const x = waterCell.x + dx;
             const y = waterCell.y + dy;
 
-            if (this.grid.isCellEmpty(x, y) && this.grid.isAreaClear(x, y, 5)) {
+            // Проверка: пусто, зона 5 чиста (старое), и ВАЖНО: нет рядом других растений (7 клеток)
+            // Реализуем проверку тут же
+            if (this.grid.isCellEmpty(x, y) && !this.hasNearbyPlant(x, y, 7)) {
                 const plant = new Plant(x, y, this.config.plantMaxSize);
                 this.plants.push(plant);
 
@@ -83,6 +85,25 @@ export class PlantManager {
         }
 
         return null;
+    }
+
+    // Хелпер для проверки соседей (копия логики из Plant, надо бы в Grid вынести, но пока тут)
+    hasNearbyPlant(cx, cy, radius) {
+        const r = radius;
+        const startX = Math.max(0, cx - r);
+        const endX = Math.min(this.grid.size - 1, cx + r);
+        const startY = Math.max(0, cy - r);
+        const endY = Math.min(this.grid.size - 1, cy + r);
+
+        for (let y = startY; y <= endY; y++) {
+            for (let x = startX; x <= endX; x++) {
+                const cell = this.grid.getCell(x, y);
+                if (cell && cell.type === 'plant') {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     update(energySystem, waterSystem, tickCount) {
@@ -171,17 +192,22 @@ export class PlantManager {
         }
 
         if (candidates.length > 0) {
-            const pos = candidates[Math.floor(Math.random() * candidates.length)];
-            const plant = new Plant(pos.x, pos.y, this.config.plantMaxSize);
-            this.plants.push(plant);
+            // Фильтруем кандидатов по дистанции до других растений
+            const validCandidates = candidates.filter(pos => !this.hasNearbyPlant(pos.x, pos.y, 7));
 
-            this.grid.setCell(pos.x, pos.y, {
-                type: 'plant',
-                plantId: plant.id
-            });
+            if (validCandidates.length > 0) {
+                const pos = validCandidates[Math.floor(Math.random() * validCandidates.length)];
+                const plant = new Plant(pos.x, pos.y, this.config.plantMaxSize);
+                this.plants.push(plant);
 
-            console.log(`%c 🌱 New plant sprouted at [${pos.x}, ${pos.y}]`, 'color: #00ff88; font-weight: bold;');
-            return plant;
+                this.grid.setCell(pos.x, pos.y, {
+                    type: 'plant',
+                    plantId: plant.id
+                });
+
+                console.log(`%c 🌱 New plant sprouted at [${pos.x}, ${pos.y}]`, 'color: #00ff88; font-weight: bold;');
+                return plant;
+            }
         }
 
         return null;

@@ -123,121 +123,189 @@ export class Plant {
             { dx: 1, dy: 1 }    // вправо-вниз (немного)
         ];
 
-        // Перемешиваем направления
-        directions.sort(() => Math.random() - 0.5);
+        findGrowthPosition(fromCell, grid) {
+            // Направления роста (более хаотично для кустистости)
+            const directions = [
+                { dx: 0, dy: -1 }, // вверх
+                { dx: -1, dy: -1 }, // влево-вверх
+                { dx: 1, dy: -1 },  // вправо-вверх
+                { dx: -1, dy: 0 },  // влево
+                { dx: 1, dy: 0 },   // вправо
+                { dx: -1, dy: 1 },  // влево-вниз (немного)
+                { dx: 1, dy: 1 }    // вправо-вниз (немного)
+            ];
 
-        for (const dir of directions) {
-            const nx = fromCell.x + dir.dx;
-            const ny = fromCell.y + dir.dy;
+            // Перемешиваем направления
+            directions.sort(() => Math.random() - 0.5);
 
-            // Проверяем границы и пустоту
-            if (nx >= 0 && nx < grid.size && ny >= 0 && ny < grid.size) {
-                if (grid.isCellEmpty(nx, ny)) {
-                    // Проверяем соседей чтобы не было слишком плотно (опционально)
-                    // Но для кустистости можно разрешить плотность
-                    return { x: nx, y: ny };
+            for (const dir of directions) {
+                const nx = fromCell.x + dir.dx;
+                const ny = fromCell.y + dir.dy;
+
+                // 1. Проверка границ и пустоты
+                if (nx >= 0 && nx < grid.size && ny >= 0 && ny < grid.size) {
+                    if (grid.isCellEmpty(nx, ny)) {
+
+                        // 2. ДИСТАНЦИЯ ДО ЧУЖИХ (7 клеток)
+                        // Сканируем область 15x15
+                        if (this.hasNeighborPlant(grid, nx, ny, 7, true)) { // true = exclude self
+                            continue;
+                        }
+
+                        // 3. ДИСТАНЦИЯ ДО СВОИХ (2 клетки, чтобы не слипались ветки)
+                        // Мы разрешаем только соединение с fromCell.
+                        // Если в радиусе 2 есть ДРУГИЕ мои клетки, кроме "хвоста" (fromCell и его соседей?), то это слипание.
+                        // Упрощенно: считаем количество своих клеток в радиусе 2.
+                        // Для линии это (nx,ny) -> fromCell -> prevCell. Итого 1-2 клетки.
+                        // Если их больше (например, параллельная ветка), то растем в гущу.
+
+                        if (this.countOwnCellsAround(grid, nx, ny, 2) > 2) {
+                            continue;
+                        }
+
+                        return { x: nx, y: ny };
+                    }
                 }
             }
+
+            return null; // Некуда расти
         }
 
-        return null; // Некуда расти
-    }
+        // Хелпер: есть ли рядом растения (excludeSelfId = true -> только чужие)
+        hasNeighborPlant(grid, cx, cy, radius, excludeSelf = false) {
+            const r = radius;
+            const startX = Math.max(0, cx - r);
+            const endX = Math.min(grid.size - 1, cx + r);
+            const startY = Math.max(0, cy - r);
+            const endY = Math.min(grid.size - 1, cy + r);
 
-    // Старый метод tryBranch больше не нужен, но оставим заглушку если он где-то вызывается
-    tryBranch(grid) { return false; }
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
+                    // Оптимизация круга (L2 distance), или просто квадрат? Квадрат проще и строже.
+                    // Пусть будет квадрат для надежности "не менее 7 клеток".
 
-    // Уменьшение растения
-    shrink(grid) {
-        if (this.cells.length <= 1) {
-            this.die(grid);
+                    const cell = grid.getCell(x, y);
+                    if (cell && cell.type === 'plant') {
+                        if (excludeSelf && cell.plantId === this.id) continue;
+                        return true;
+                    }
+                }
+            }
             return false;
         }
 
-        // Удаляем последнюю клетку активной ветки
-        const branch = this.branches[this.currentBranch];
-        if (branch && branch.cells.length > 1) {
-            const removedCell = branch.cells.pop();
-            const cellIndex = this.cells.findIndex(c => c.x === removedCell.x && c.y === removedCell.y);
-            if (cellIndex !== -1) {
-                this.cells.splice(cellIndex, 1);
-            }
+        countOwnCellsAround(grid, cx, cy, radius) {
+            let count = 0;
+            const r = radius;
+            const startX = Math.max(0, cx - r);
+            const endX = Math.min(grid.size - 1, cx + r);
+            const startY = Math.max(0, cy - r);
+            const endY = Math.min(grid.size - 1, cy + r);
 
-            grid.setCell(removedCell.x, removedCell.y, {
-                type: 'empty',
-                plantId: null
-            });
-        }
-
-        // Если ветка опустела, деактивируем её и переключаемся на предыдущую
-        if (branch && branch.cells.length <= 1) {
-            branch.active = false;
-            this.currentBranch = Math.max(0, this.currentBranch - 1);
-        }
-
-        return true;
-    }
-
-    // Смерть растения
-    die(grid) {
-        this.isAlive = false;
-
-        // Удаляем все клетки
-        for (const cell of this.cells) {
-            grid.setCell(cell.x, cell.y, {
-                type: 'empty',
-                plantId: null
-            });
-        }
-    }
-
-    // Генерация семян при достижении максимального размера
-    generateSeeds(grid, count = 2) {
-        if (this.size < this.maxSize) {
-            return [];
-        }
-
-        const seeds = [];
-        let attempts = 0;
-        const maxAttempts = count * 5; // Лимит попыток
-
-        // Собираем все кончики веток как кандидатов
-        const candidates = [];
-        for (const branch of this.branches) {
-            if (branch.cells.length > 0) {
-                candidates.push(branch.cells[branch.cells.length - 1]);
-            }
-        }
-
-        // Если кандидатов мало, добавим просто случайные клетки растения
-        if (candidates.length < count) {
-            candidates.push(...this.cells);
-        }
-
-        while (seeds.length < count && attempts < maxAttempts) {
-            attempts++;
-            // Берем случайного кандидата
-            const sourceCell = candidates[Math.floor(Math.random() * candidates.length)];
-
-            // Пытаемся уронить семя рядом
-            const dx = Math.floor(Math.random() * 5) - 2; // -2..2
-            const dy = Math.floor(Math.random() * 5) - 2;
-
-            const sx = sourceCell.x + dx;
-            const sy = sourceCell.y + dy;
-
-            if (sx >= 0 && sx < grid.size && sy >= 0 && sy < grid.size) {
-                // Если место свободно (или даже занято нами же, но для семени можно перезаписать, если умираем)
-                // Но лучше искать пустое
-                if (grid.isCellEmpty(sx, sy)) {
-                    seeds.push({ x: sx, y: sy });
-                    grid.setCell(sx, sy, {
-                        type: 'seed',
-                        plantId: null
-                    });
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
+                    if (x === cx && y === cy) continue;
+                    const cell = grid.getCell(x, y);
+                    if (cell && cell.type === 'plant' && cell.plantId === this.id) {
+                        count++;
+                    }
                 }
             }
+            return count;
         }
 
-        return seeds;
+        // Уменьшение растения
+        shrink(grid) {
+            if (this.cells.length <= 1) {
+                this.die(grid);
+                return false;
+            }
+
+            // Удаляем последнюю клетку активной ветки
+            const branch = this.branches[this.currentBranch];
+            if (branch && branch.cells.length > 1) {
+                const removedCell = branch.cells.pop();
+                const cellIndex = this.cells.findIndex(c => c.x === removedCell.x && c.y === removedCell.y);
+                if (cellIndex !== -1) {
+                    this.cells.splice(cellIndex, 1);
+                }
+
+                grid.setCell(removedCell.x, removedCell.y, {
+                    type: 'empty',
+                    plantId: null
+                });
+            }
+
+            // Если ветка опустела, деактивируем её и переключаемся на предыдущую
+            if (branch && branch.cells.length <= 1) {
+                branch.active = false;
+                this.currentBranch = Math.max(0, this.currentBranch - 1);
+            }
+
+            return true;
+        }
+
+        // Смерть растения
+        die(grid) {
+            this.isAlive = false;
+
+            // Удаляем все клетки
+            for (const cell of this.cells) {
+                grid.setCell(cell.x, cell.y, {
+                    type: 'empty',
+                    plantId: null
+                });
+            }
+        }
+
+        // Генерация семян при достижении максимального размера
+        generateSeeds(grid, count = 2) {
+            if (this.size < this.maxSize) {
+                return [];
+            }
+
+            const seeds = [];
+            let attempts = 0;
+            const maxAttempts = count * 5; // Лимит попыток
+
+            // Собираем все кончики веток как кандидатов
+            const candidates = [];
+            for (const branch of this.branches) {
+                if (branch.cells.length > 0) {
+                    candidates.push(branch.cells[branch.cells.length - 1]);
+                }
+            }
+
+            // Если кандидатов мало, добавим просто случайные клетки растения
+            if (candidates.length < count) {
+                candidates.push(...this.cells);
+            }
+
+            while (seeds.length < count && attempts < maxAttempts) {
+                attempts++;
+                // Берем случайного кандидата
+                const sourceCell = candidates[Math.floor(Math.random() * candidates.length)];
+
+                // Пытаемся уронить семя рядом
+                const dx = Math.floor(Math.random() * 5) - 2; // -2..2
+                const dy = Math.floor(Math.random() * 5) - 2;
+
+                const sx = sourceCell.x + dx;
+                const sy = sourceCell.y + dy;
+
+                if (sx >= 0 && sx < grid.size && sy >= 0 && sy < grid.size) {
+                    // Если место свободно (или даже занято нами же, но для семени можно перезаписать, если умираем)
+                    // Но лучше искать пустое
+                    if (grid.isCellEmpty(sx, sy)) {
+                        seeds.push({ x: sx, y: sy });
+                        grid.setCell(sx, sy, {
+                            type: 'seed',
+                            plantId: null
+                        });
+                    }
+                }
+            }
+
+            return seeds;
+        }
     }
-}
