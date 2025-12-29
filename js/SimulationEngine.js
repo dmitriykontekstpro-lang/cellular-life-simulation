@@ -80,40 +80,40 @@ export class SimulationEngine {
         this.updateStats();
     }
 
-    gameLoop() {
+    update() {
         if (!this.isRunning) return;
 
         const currentTime = performance.now();
-        const deltaTime = currentTime - this.lastFrameTime;
+        const deltaTime = currentTime - this.lastUpdateTime;
 
-        // Обновляем симуляцию с учетом скорости
-        const tickInterval = 1000 / this.ticksPerSecond;
-        const ticksToProcess = Math.floor((deltaTime * this.speed) / tickInterval);
+        // Симуляция: обновляем логику с учетом скорости
+        // Target 60 updates per second, then scale by speed
+        const updatesNeeded = Math.floor(deltaTime * this.speed / (1000 / 60));
 
-        for (let i = 0; i < ticksToProcess; i++) {
-            this.tick();
+        for (let i = 0; i < updatesNeeded; i++) {
+            this.tickCount++;
+
+            // Обновляем энергию
+            this.energySystem.update();
+
+            // ОПТИМИЗАЦИЯ: Обновляем воду только каждые 10 тиков
+            if (this.tickCount % 10 === 0) {
+                this.waterSystem.update();
+            }
+
+            // Обновляем растения
+            this.plantManager.update(this.energySystem, this.waterSystem, this.tickCount);
         }
 
-        if (ticksToProcess > 0) {
-            this.lastFrameTime = currentTime;
-            this.renderer.render();
+        if (updatesNeeded > 0) {
+            this.lastUpdateTime = currentTime;
             this.updateStats();
-
+            this.needsRender = true; // Mark that a render is needed
             if (this.tickCount % 1000 === 0) {
                 console.log(`%c ⏱️ Tick: ${this.tickCount} | Biomass: ${document.getElementById('plantCount')?.textContent || '?'}`, 'color: #888888; font-size: 10px;');
             }
         }
 
-        requestAnimationFrame(() => this.gameLoop());
-    }
-
-    tick() {
-        this.tickCount++;
-
-        // Обновляем энергию
-        this.energySystem.update();
-
-        // ОПТИМИЗАЦИЯ: Обновляем воду только каждые 10 тиков
         if (this.tickCount % 10 === 0) {
             this.waterSystem.update();
         }

@@ -98,106 +98,79 @@ export class Renderer {
     }
 
     render() {
-        const ctx = this.ctx;
+        // Оптимизация: используем ImageData для прямой записи пикселей
         const grid = this.grid;
-
-        // Очистка канваса
-        ctx.fillStyle = this.colors.empty;
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Отрисовка сетки
-        const startX = Math.max(0, Math.floor(-this.offsetX / this.cellSize));
-        const startY = Math.max(0, Math.floor(-this.offsetY / this.cellSize));
-        const endX = Math.min(grid.size, Math.ceil((this.canvas.width - this.offsetX) / this.cellSize));
-        const endY = Math.min(grid.size, Math.ceil((this.canvas.height - this.offsetY) / this.cellSize));
-
-        for (let y = startY; y < endY; y++) {
-            for (let x = startX; x < endX; x++) {
-                const cell = grid.getCell(x, y);
-                if (!cell || cell.type === 'empty') continue;
-
-                const screenX = this.offsetX + x * this.cellSize;
-                const screenY = this.offsetY + y * this.cellSize;
-
-                // Выбор цвета
-                let color = this.colors.empty;
-                if (cell.type === 'plant') {
-                    // Проверяем статус энергии растения (нужен доступ к plantManager, 
-                    // но у нас только grid. В grid нет ссылки на plantManager.
-                    // Придется полагаться на то, что мы передадим plantManager в Renderer или 
-                    // будем хранить состояние в самом cell. 
-                    // ВАРИАНТ: В Plant.js при обновлении hasEnergySupply обновлять и cell metadata?
-                    // Или просто передать plantManager в конструктор Renderer.js.
-
-                    // Пока сделаем хак: будем считать что plantManager глобально доступен или
-                    // лучше прокинем его.
-                    // НО! Проще всего: при обновлении hasEnergySupply в Plant.js обновлять цвет всех клеток этого растения?
-                    // Нет, это дорого.
-
-                    // ДАВАЙТЕ: искать растение через grid. Но grid хранит только ID.
-                    // Решение: Передать (или найти) растение.
-                    // Чтобы не менять архитектуру, будем использовать стандартный цвет, 
-                    // НО если у нас будет ссылка на PlantManager...
-
-                    // ВРЕМЕННОЕ РЕШЕНИЕ: Просто светло-зеленый.
-                    // СТОП. Задача "сделать индикацию".
-                    // Я добавлю поиск растения, если передам plantManager в render.
-
-                    // ЛУЧШЕЕ РЕШЕНИЕ: В Plant.tryGrow мы обновляем cell.hasEnergy = true/false?
-                    // Нет, cell хранит type и id.
-
-                    // Я добавлю поле `hasEnergy` в данные клетки (grid.setCell) при обновлении растения?
-                    // Это сложно синхронизировать.
-
-                    // Я изменю Renderer, добавив метод setPlantManager и буду использовать его.
-
-                    if (this.plantManager) {
-                        const plant = this.plantManager.plants.find(p => p.id === cell.plantId);
-                        if (plant) {
-                            color = plant.hasEnergySupply ? '#006400' : '#90EE90';
-                        } else {
-                            color = this.colors.plant;
-                        }
-                    } else {
-                        color = this.colors.plant;
-                    }
-
-                } else if (cell.type === 'seed') {
-                    color = this.colors.seed;
-                } else if (cell.type === 'water') {
-                    color = cell.isWaterSource ? this.colors.waterSource : this.colors.water;
+        const size = grid.size;
+        
+        // Инициализируем буфер если нужно
+        if (!this.imageData || this.imageData.width !== size) {
+            this.imageData = this.ctx.createImageData(size, size);
+            this.buf32 = new Uint32Array(this.imageData.data.buffer);
+        }
+        
+        const buf = this.buf32;
+        
+        // Цвета в формате ABGR (little-endian)
+        const COLOR_EMPTY = 0xFF000000;
+        const COLOR_PLANT_LIGHT = 0xFF90EE90;
+        const COLOR_PLANT_DARK = 0xFF006400;
+        const COLOR_SEED = 0xFF00FFFF;
+        const COLOR_WATER = 0xFFFFAA00;
+        const COLOR_WATER_SOURCE = 0xFFDD8800;
+        
+        // Заполняем буфер
+        for (let i = 0; i < size * size; i++) {
+            const x = i % size;
+            const y = Math.floor(i / size);
+            const cell = grid.getCell(x, y);
+            
+            if (!cell || cell.type === 'empty') {
+                buf[i] = COLOR_EMPTY;
+            } else if (cell.type === 'plant') {
+                // Проверяем энергию (оптимизировано - кэшируем plantManager)
+                if (this.plantManager) {
+                    const plant = this.plantManager.plants.find(p => p.id === cell.plantId);
+                    buf[i] = (plant && plant.hasEnergySupply) ? COLOR_PLANT_DARK : COLOR_PLANT_LIGHT;
+                } else {
+                    buf[i] = COLOR_PLANT_LIGHT;
                 }
-
-                ctx.fillStyle = color;
-                ctx.fillRect(
-                    Math.floor(screenX),
-                    Math.floor(screenY),
-                    Math.ceil(this.cellSize),
-                    Math.ceil(this.cellSize)
-                );
+            } else if (cell.type === 'seed') {
+                buf[i] = COLOR_SEED;
+            } else if (cell.type === 'water') {
+                buf[i] = cell.isWaterSource ? COLOR_WATER_SOURCE : COLOR_WATER;
+            } else {
+                buf[i] = COLOR_EMPTY;
             }
         }
-
-        // Отрисовка энергии (опционально, для отладки)
-        if (this.showEnergy && this.cellSize > 3) {
-            ctx.globalAlpha = 0.3;
-            for (let y = startY; y < endY; y++) {
-                for (let x = startX; x < endX; x++) {
-                    const cell = grid.getCell(x, y);
-                    if (cell && cell.energy > 0) {
-                        const screenX = this.offsetX + x * this.cellSize;
-                        const screenY = this.offsetY + y * this.cellSize;
-                        ctx.fillStyle = `rgba(255, 255, 0, ${cell.energy})`;
-                        ctx.fillRect(
-                            Math.floor(screenX),
-                            Math.floor(screenY),
-                            Math.ceil(this.cellSize),
-                            Math.ceil(this.cellSize)
-                        );
-                    }
-                }
-            }
-            ctx.globalAlpha = 1.0;
+        
+        // Рисуем буфер на временный канвас (размер = grid.size)
+        if (!this.bufferCanvas) {
+            this.bufferCanvas = document.createElement('canvas');
+            this.bufferCtx = this.bufferCanvas.getContext('2d', { alpha: false });
+        }
+        
+        this.bufferCanvas.width = size;
+        this.bufferCanvas.height = size;
+        this.bufferCtx.putImageData(this.imageData, 0, 0);
+        
+        // Очищаем основной канвас
+        this.ctx.fillStyle = '#000000';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Масштабируем и рисуем (GPU делает всю работу!)
+        const scaledWidth = size * this.cellSize;
+        const scaledHeight = size * this.cellSize;
+        
+        this.ctx.drawImage(
+            this.bufferCanvas,
+            0, 0, size, size,
+            this.offsetX, this.offsetY,
+            scaledWidth, scaledHeight
+        );
+        
+        // Рендерим лупу если нужно
+        if (this.showMagnifier) {
+            this.renderMagnifier();
         }
     }
 
