@@ -440,3 +440,66 @@ body {
 .canvas-container.fullscreen-mode canvas#simulationCanvas {
     border-radius: 0;
 }
+
+/* --- Exit Full Screen Button --- */
+.exit-fullscreen-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 3000;
+    background: rgba(255, 51, 102, 0.9);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.exit-fullscreen-btn:hover {
+    background: rgba(255, 51, 102, 1);
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(255, 51, 102, 0.6);
+}
+
+/* --- Stats Overlay (Full Screen Mode) --- */
+.stats-overlay {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 2500;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid rgba(0, 217, 255, 0.4);
+    border-radius: 12px;
+    padding: 15px;
+    min-width: 200px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+.stat-overlay-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.stat-overlay-item:last-child {
+    margin-bottom: 0;
+}
+
+.stat-overlay-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    margin-right: 10px;
+}
+
+.stat-overlay-value {
+    color: #00d9ff;
+    font-weight: bold;
+    font-size: 1.1rem;
+    font-family: 'Consolas', monospace;
+}

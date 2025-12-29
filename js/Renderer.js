@@ -212,10 +212,14 @@ export class Renderer {
         this.isFullScreen = !this.isFullScreen;
         const container = document.getElementById('simulationContainer');
         const magnifier = document.getElementById('magnifier-container');
+        const exitBtn = document.getElementById('exitFullscreenBtn');
+        const statsOverlay = document.getElementById('statsOverlay');
 
         if (this.isFullScreen) {
             container.classList.add('fullscreen-mode');
             magnifier.style.display = 'flex'; // Показываем лупу
+            exitBtn.style.display = 'block'; // Показываем кнопку выхода
+            statsOverlay.style.display = 'block'; // Показываем статистику
             this.showMagnifier = true;
 
             // Инициализация канваса лупы, если еще нет
@@ -231,6 +235,8 @@ export class Renderer {
         } else {
             container.classList.remove('fullscreen-mode');
             magnifier.style.display = 'none'; // Скрываем
+            exitBtn.style.display = 'none'; // Скрываем кнопку
+            statsOverlay.style.display = 'none'; // Скрываем статистику
             this.showMagnifier = false;
         }
 

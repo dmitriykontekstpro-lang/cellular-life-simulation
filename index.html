@@ -101,6 +101,31 @@
                 <div class="canvas-container" id="simulationContainer">
                     <canvas id="simulationCanvas"></canvas>
 
+                    <!-- Exit Full Screen Button (hidden by default) -->
+                    <button id="exitFullscreenBtn" class="exit-fullscreen-btn" style="display: none;">
+                        ✕ Выход
+                    </button>
+
+                    <!-- Stats Overlay (top-right, hidden in normal mode) -->
+                    <div id="statsOverlay" class="stats-overlay" style="display: none;">
+                        <div class="stat-overlay-item">
+                            <span class="stat-overlay-label">🌱 Биомасса:</span>
+                            <span id="overlayPlantCount" class="stat-overlay-value">0</span>
+                        </div>
+                        <div class="stat-overlay-item">
+                            <span class="stat-overlay-label">🌾 Семена:</span>
+                            <span id="overlaySeedCount" class="stat-overlay-value">0</span>
+                        </div>
+                        <div class="stat-overlay-item">
+                            <span class="stat-overlay-label">💧 Вода:</span>
+                            <span id="overlayWaterCells" class="stat-overlay-value">0</span>
+                        </div>
+                        <div class="stat-overlay-item">
+                            <span class="stat-overlay-label">⏱️ Тиков:</span>
+                            <span id="overlayTickCount" class="stat-overlay-value">0</span>
+                        </div>
+                    </div>
+
                     <!-- Magnifier View (Picture-in-Picture) -->
                     <div id="magnifier-container" class="magnifier-view" style="display: none;">
                         <span class="magnifier-label">🔍 Zoom 50x50</span>

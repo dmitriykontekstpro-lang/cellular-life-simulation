@@ -54,6 +54,14 @@ export class ControlPanel {
             });
         }
 
+        // Exit Full Screen button
+        const exitFullscreenBtn = document.getElementById('exitFullscreenBtn');
+        if (exitFullscreenBtn) {
+            exitFullscreenBtn.addEventListener('click', () => {
+                this.engine.renderer.toggleFullScreen();
+            });
+        }
+
         // Listen for stats updates
         document.addEventListener('statsUpdate', (e) => {
             this.updateStatsDisplay(e.detail);
@@ -89,9 +97,21 @@ export class ControlPanel {
         // Вместо кол-ва растений показываем биомассу
         const displayValue = stats.totalBiomass !== undefined ? stats.totalBiomass : stats.plantCount;
 
+        // Обновляем основную панель
         document.getElementById('plantCount').textContent = displayValue.toLocaleString();
         document.getElementById('seedCount').textContent = stats.seedCount;
         document.getElementById('waterCells').textContent = stats.waterCells;
         document.getElementById('tickCount').textContent = stats.tickCount.toLocaleString();
+
+        // Обновляем overlay (fullscreen)
+        const overlayPlant = document.getElementById('overlayPlantCount');
+        const overlaySeed = document.getElementById('overlaySeedCount');
+        const overlayWater = document.getElementById('overlayWaterCells');
+        const overlayTick = document.getElementById('overlayTickCount');
+
+        if (overlayPlant) overlayPlant.textContent = displayValue.toLocaleString();
+        if (overlaySeed) overlaySeed.textContent = stats.seedCount;
+        if (overlayWater) overlayWater.textContent = stats.waterCells;
+        if (overlayTick) overlayTick.textContent = stats.tickCount.toLocaleString();
     }
 }
